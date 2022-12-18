@@ -1,0 +1,15 @@
+# emacs
+*~
+\#*\#
+.\#*
+
+# wasm
+*.o
+*.a
+*.wasm
+
+# our project
+main
+
+third-party/lua/lua-5.4.4
+
