@@ -1,0 +1,3 @@
+https://wasmbyexample.dev/examples/reading-and-writing-audio/reading-and-writing-audio.assemblyscript.en-us.html
+https://web.dev/webaudio-intro/
+

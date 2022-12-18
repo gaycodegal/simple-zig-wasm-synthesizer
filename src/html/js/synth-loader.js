@@ -1,17 +1,18 @@
 
-async function test(){
+async function _synthModule (accept, reject){
     const result = await fetchWASMBinary('js/synth.wasm');
-    WebAssembly.instantiate(result, {
-	env: {
-	    //print: (result) => { console.log(`The result is ${result}`); }
-	}})
-	.then(result => {
-	    const fibonacci = result.instance.exports.fibonacci;
-	    for (var i = 0; i < 10; ++i){
-		// having to use BigInt function is odd here.
-		console.log(`fibonacci ${i} is ${fibonacci(BigInt(i))}`);
-	    }
+    WebAssembly.instantiate(result, {})
+	.then(module => {
+	    accept({
+		module,
+		memory: module.instance.exports.memory,
+		u8ArrayToF32Array: module.instance.exports.u8ArrayToF32Array,
+		sfxBuffer: module.instance.exports.sfxBuffer,
+	    });
 	});
 }
 
-test();
+function synthModule(){
+    return new Promise(_synthModule);
+}
+

@@ -6,7 +6,7 @@
 # wasm
 *.o
 *.a
-*.wasm
+
 
 # our project
 main

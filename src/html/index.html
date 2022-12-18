@@ -9,11 +9,21 @@
   <body>
     <main>
       <pre id="output"></pre>
+      <p id="warning">
+	Warning: the sound this button plays, is aggressive and
+	jarring. Sorry about that.
+	<br>
+
+	I would not recommend listening with headphones on.
+	<br>
+
+	You can, however, press it multiple times in quick succession.
+	
+      </p>
       <script src="js/webassembly.js"></script>
       <script src="js/synth-loader.js"></script>
-      <script>
-
-      </script>
+      <script src="js/play-audio.js"></script>
+      <button onclick="main()" aria-describedby="warning">play a sound</button>      
     </main>
   </body>
 </html>
