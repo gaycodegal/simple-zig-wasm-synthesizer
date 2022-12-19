@@ -1,6 +1,6 @@
 
 async function _synthModule (accept, reject){
-    const result = await fetchWASMBinary('js/synth.wasm');
+    const result = await fetchWASMBinary('src/html/js/synth.wasm');
     WebAssembly.instantiate(result, {})
 	.then(module => {
 	    accept({
