@@ -9,8 +9,13 @@ async function main(){
        should be able to play multiple at once
     */
     function playSoundEffect() {
-	const u8Array = new Float32Array(memory.buffer, 0, audioContext.sampleRate * 2)
-	const f32Array = new Float32Array(memory.buffer, 0, audioContext.sampleRate * 2)
+	const u8Array = new Uint8Array(memory.buffer, 0, audioContext.sampleRate * 2);
+
+	// abusing the fact that javascript is single threaded to only allocate
+	// memory during this function, and disposing of it afterwards.
+	// assumes the memory address space is big enough to fit in both
+	// arrays into memory. I should fix that
+	const f32Array = new Float32Array(memory.buffer, u8Array.length, audioContext.sampleRate * 2);
 	const audioBuffer = audioContext.createBuffer(
 	    1,
 	    audioContext.sampleRate * 2, // 2 seconds
