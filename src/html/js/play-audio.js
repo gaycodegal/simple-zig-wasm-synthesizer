@@ -1,7 +1,8 @@
 const synthWASMModulePromise = synthModule();
+let audioContext = null;
 async function main(){
     const synthWASMModule = await synthWASMModulePromise;
-    var audioContext = new AudioContext({sampleRate:256*32});
+    var audioContext = audioContext ?? new AudioContext({sampleRate:256*32});
     const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
     /**
        play a sound as a buffer
