@@ -27,6 +27,8 @@ async function main(){
 	sfxBuffer(
 	    u8Array.byteOffset, u8Array.length,
 	    audioContext.sampleRate);
+
+	//console.log(u8Array);
 	
 	// copy the sound to Float 32 because webassembly faster
 	// we can't just pass the audioBuffer's buffer directly because

@@ -5,12 +5,58 @@ const NoteHz = [_]u16{ 0x10, 0x11, 0x12, 0x13, 0x15, 0x16, 0x17, 0x18, 0x1a, 0x1
 
 const period_per_note = 40;
 
+const Note = struct {
+    // nonzero
+    hz: u16,
+    note: ?u8,
+};
+
+var testSong: [5]u8 = undefined;
+var testSongInitialized = false;
+
+fn getNote(pos: usize, song: []u8) Note {
+    // if greater than song length, or bad note at index,
+    // fake frequency is used, and note is set to null
+    var hz: u16 = 256;
+    var note: ?u8 = null;
+    // don't check < 0, all types are unsigned
+    if (pos < song.len) {
+        const noteTemp = song[pos];
+        if (noteTemp < NoteHz.len) {
+            note = noteTemp;
+            hz = NoteHz[noteTemp];
+        }
+    }
+
+    return Note{
+        .hz = hz,
+        .note = note,
+    };
+}
+
+fn samplesPerWave(note: Note, sampleRate: u32) u32 {
+    if (note.hz == 0) {
+        return sampleRate / 256;
+    } else {
+        return sampleRate / note.hz;
+    }
+}
+
 /// generates 3 periods of each note starting near middle c (256hz, 0xf7)
 /// each time it generates 3 periods, it increases the hz until it loops
 export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void {
-    var hz_index: usize = 47;
-    var hz = NoteHz[hz_index];
-    var samples_per_wave = sampleRate / hz;
+    if (!testSongInitialized) {
+        testSongInitialized = true;
+        const max_note = 55;
+        const min_note = 47;
+        for (testSong[0..testSong.len]) |*val, pos| {
+            val.* = @intCast(u8, pos % (max_note - min_note)) + min_note;
+        }
+    }
+
+    var song_index: usize = 0;
+    var note = getNote(song_index, &testSong);
+    var samples_per_wave = samplesPerWave(note, sampleRate);
 
     var i: usize = 0;
     var periods_at_note: u8 = 0;
@@ -19,20 +65,25 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
         const period_or_end = @min(u8ArrayLength, i + samples_per_wave);
         var j: usize = i;
         var period_index: u32 = 0;
-        while (j < period_or_end) : (j += 1) {
-            u8Array[j] = @floatToInt(u8, @sin(@intToFloat(f32, period_index % samples_per_wave) / @intToFloat(f32, samples_per_wave) * 2 * pi) * 127.5 + 127.5);
-            period_index += 1;
+        // really should extract these into functions
+        if (note.note == null) {
+            while (j < period_or_end) : (j += 1) {
+                u8Array[j] = 127;
+                period_index += 1;
+            }
+        } else {
+            while (j < period_or_end) : (j += 1) {
+                u8Array[j] = @floatToInt(u8, @sin(@intToFloat(f32, period_index % samples_per_wave) / @intToFloat(f32, samples_per_wave) * 2 * pi) * 127.5 + 127.5);
+                period_index += 1;
+            }
         }
         periods_at_note += 1;
         i += samples_per_wave;
         if (periods_at_note >= period_per_note) {
             periods_at_note = 0;
-            hz_index += 1;
-            if (hz_index >= @min(55, NoteHz.len)) {
-                hz_index = 45;
-            }
-            hz = NoteHz[hz_index];
-            samples_per_wave = sampleRate / hz;
+            song_index += 1;
+            note = getNote(song_index, &testSong);
+            samples_per_wave = samplesPerWave(note, sampleRate);
         }
     }
 }
@@ -40,4 +91,10 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
 export fn u8ArrayToF32Array(u8Array: [*]u8, u8ArrayLength: usize, f32Array: [*]f32, f32ArrayLength: usize) void {
     const size = @min(u8ArrayLength, f32ArrayLength);
     for (u8Array[0..size]) |b, i| f32Array[i] = @intToFloat(f32, b) / 128.0 - 1;
+}
+
+test "print assumptions" {
+    const std = @import("std");
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Hello, {d}!\n", .{NoteHz.len});
 }
