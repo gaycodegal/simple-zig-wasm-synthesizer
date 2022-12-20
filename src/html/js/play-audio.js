@@ -27,7 +27,7 @@ async function main(){
 	sfxBuffer(
 	    u8Array.byteOffset, u8Array.length,
 	    audioContext.sampleRate);
-
+	
 	// copy the sound to Float 32 because webassembly faster
 	// we can't just pass the audioBuffer's buffer directly because
 	// webassembly can only access memory it owns
@@ -46,4 +46,34 @@ async function main(){
     }
 
     playSoundEffect()
+}
+
+async function downloadWav(){
+    const synthWASMModule = await synthWASMModulePromise;
+    var audioContext = audioContext ?? new AudioContext();//{sampleRate:256*32});
+    const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
+
+    const hz = 48000;
+    const length = hz * 2;
+
+    const u8Array = new Uint8Array(memory.buffer, 0, length);
+
+    const WaveFile = wavefile.WaveFile;
+    wav = new WaveFile();
+
+    // create the sound
+    sfxBuffer(
+	u8Array.byteOffset, u8Array.length,
+	audioContext.sampleRate);
+
+    wav.fromScratch(1, hz, '8', u8Array, {method: "point", LPF: false});
+    download(wav.toDataURI(), "raw_wav_demo.wav");
+
+    function download(d, name){
+	const a = document.createElement("a");
+	a.textContent = `download ${name}`;
+	a.setAttribute("href", d);
+	a.setAttribute("download", name);
+	document.body.appendChild(a);
+    }
 }
