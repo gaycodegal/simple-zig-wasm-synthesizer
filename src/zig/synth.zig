@@ -15,7 +15,7 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
     var i: usize = 0;
     var periods_at_note: u8 = 0;
 
-    while (i < u8ArrayLength) : (i += samples_per_wave) {
+    while (i < u8ArrayLength) {
         const period_or_end = @min(u8ArrayLength, i + samples_per_wave);
         var j: usize = i;
         var period_index: u32 = 0;
@@ -24,6 +24,7 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
             period_index += 1;
         }
         periods_at_note += 1;
+        i += samples_per_wave;
         if (periods_at_note >= period_per_note) {
             periods_at_note = 0;
             hz_index += 1;
