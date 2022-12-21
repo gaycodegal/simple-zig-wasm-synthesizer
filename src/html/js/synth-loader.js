@@ -1,14 +1,21 @@
 
 async function _synthModule (accept, reject){
     const result = await fetchWASMBinary('src/html/js/synth.wasm');
-    WebAssembly.instantiate(result, {})
+    const mod = {};
+    const decoder = new TextDecoder();
+    WebAssembly.instantiate(result, {
+	env: {
+	    print: function(a, b){
+		console.log(decoder.decode(new Uint8Array(mod.memory.buffer, a, b)));
+	    }
+	}})
 	.then(module => {
-	    accept({
-		module,
-		memory: module.instance.exports.memory,
-		u8ArrayToF32Array: module.instance.exports.u8ArrayToF32Array,
-		sfxBuffer: module.instance.exports.sfxBuffer,
-	    });
+	    
+	    mod.module = module;
+	    mod.memory = module.instance.exports.memory;
+	    mod.u8ArrayToF32Array = module.instance.exports.u8ArrayToF32Array;
+	    mod.sfxBuffer =  module.instance.exports.sfxBuffer;
+	    accept(mod);
 	});
 }
 
