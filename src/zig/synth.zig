@@ -59,7 +59,8 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 
 /// generates 3 periods of each note starting near middle c (256hz, 0xf7)
 /// each time it generates 3 periods, it increases the hz until it loops
-export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void {
+export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32, songNotesPointer: [*]u8, songNotesLength: usize) void {
+    const u8Array = u8ArrayPointer[0..u8ArrayLength];
     if (!testSongInitialized) {
         testSongInitialized = true;
         const max_note = 55;
@@ -69,12 +70,16 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
         }
     }
 
+    var chosenSong = songNotesPointer[0..songNotesLength];
+    if (songNotesLength == 0) {
+        chosenSong = &testSong;
+    }
+
     var previous_note_amplitude: i32 = 7;
-    var previous_note_period: u8 = 0;
     var note_period: u8 = 0;
 
     var song_index: usize = 0;
-    var note = getNote(song_index, &testSong);
+    var note = getNote(song_index, chosenSong);
     var samples_per_wave = samplesPerWave(note, sampleRate);
 
     var i: usize = 0;
@@ -111,7 +116,6 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
                 }
 
                 // increment stuff
-                previous_note_period = note_period;
                 note_period = (note_period + 1) % 32;
                 previous_note_amplitude = note_amplitude;
             }
@@ -121,8 +125,10 @@ export fn sfxBuffer(u8Array: [*]u8, u8ArrayLength: usize, sampleRate: u32) void 
         if (periods_at_note >= period_per_note) {
             periods_at_note = 0;
             song_index += 1;
-            previous_note_amplitude = note.waveform[previous_note_period];
-            note = getNote(song_index, &testSong);
+            if (song_index >= chosenSong.len) {
+                song_index = 0;
+            }
+            note = getNote(song_index, chosenSong);
             samples_per_wave = samplesPerWave(note, sampleRate);
         }
     }
@@ -137,4 +143,14 @@ test "print assumptions" {
     const std = @import("std");
     const stdout = std.io.getStdOut().writer();
     try stdout.print("Hello, {d}!\n", .{NoteHz.len});
+
+    if (!testSongInitialized) {
+        testSongInitialized = true;
+        const max_note = 55;
+        const min_note = 47;
+        for (testSong[0..testSong.len]) |*val, pos| {
+            val.* = @intCast(u8, pos % (max_note - min_note)) + min_note;
+            try stdout.print("{d}, ", .{NoteHz[val.*]});
+        }
+    }
 }

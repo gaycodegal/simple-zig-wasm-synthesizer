@@ -8,6 +8,15 @@
   </head>
   <body>
     <main>
+      <ol>
+	<li><label for="playback-hz">Playback hz</label><input id="playback-hz" type="number" value="44100"></input></li>
+	<li><label for="seconds-length">Length in seconds (whole number). Can't be that high.</label><input id="seconds-length" type="number" value="2"></input></li>
+	<li>
+	  <label for="notes-to-play">Round robin note indexes</label>
+	  <input id="notes-to-play" aria-describedby="notes-to-play-describe" pattern="(\d+\s*,\s*)+" value="47, 48, 49"></input>
+	  <p id="notes-to-play-describe">comma separated 8 bit note indexes, can be between 0 and 103</p>
+	</li>
+      </ol>
       <pre id="output"></pre>
       <ul id="warning">
 	<li>Sound is back to sounding kinda bad, don't use headphones</li>
@@ -22,7 +31,24 @@ the generated wave forms for visual inspection -->
       <script src="src/html/js/webassembly.js"></script>
       <script src="src/html/js/synth-loader.js"></script>
       <script src="src/html/js/play-audio.js"></script>
-      <button onclick="main()" aria-describedby="warning">play a sound</button>      
+      <button onclick="main()" aria-describedby="warning">play a sound</button>
+      <br>
+      <!--button onclick="parseConstants(downloadWav)">download as .wav file</button-->      
     </main>
+    <footer>
+      <a href="https://github.com/gaycodegal/simple-zig-wasm-synthesizer">this project itself is mit licensed</a>
+      <p>
+	some open source code was used as a part of this project.
+	legally, you these two licenses need to be distributed with the project:
+      </p>
+      <ol>
+	<li>
+	  <a href="license-wavefile_js.md">wavefile saver js license</a>
+	</li>
+	<li>
+	  <a href="license-tic80.md">tic80 license</a>
+	</li>
+      </ol>
+      </footer>
   </body>
 </html>
