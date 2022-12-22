@@ -128,7 +128,7 @@ async function downloadWav(sampleRate, songNotes, secondsLength){
     allocatorIndex += songNotes.length;
 
 
-    const hz = 48000;
+    const hz = sampleRate;
     const length = hz * secondsLength;
 
     const u8Array = new Uint8Array(memory.buffer, allocatorIndex, length);

@@ -33,7 +33,7 @@ the generated wave forms for visual inspection -->
       <script src="src/html/js/play-audio.js"></script>
       <button onclick="main()" aria-describedby="warning">play a sound</button>
       <br>
-      <!--button onclick="parseConstants(downloadWav)">download as .wav file</button-->      
+      <button class="hide-wavefile-js" onclick="parseConstants(downloadWav)">download as .wav file</button>      
     </main>
     <footer>
       <a href="https://github.com/gaycodegal/simple-zig-wasm-synthesizer">this project itself is mit licensed</a>
@@ -42,13 +42,20 @@ the generated wave forms for visual inspection -->
 	legally, you these two licenses need to be distributed with the project:
       </p>
       <ol>
-	<li>
+	<li class="hide-wavefile-js">
 	  <a href="license-wavefile_js.md">wavefile saver js license</a>
 	</li>
 	<li>
 	  <a href="license-tic80.md">tic80 license</a>
 	</li>
       </ol>
-      </footer>
+    </footer>
+    <script>
+      if(wavefile.WaveFile){
+	  for(x of document.querySelectorAll('.hide-wavefile-js')) {
+	      x.classList.remove('hide-wavefile-js');
+	  }
+      }
+    </script>
   </body>
 </html>

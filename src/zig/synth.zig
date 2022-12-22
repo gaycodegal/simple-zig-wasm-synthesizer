@@ -70,10 +70,10 @@ export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32
         }
     }
 
-    var chosenSong = songNotesPointer[0..songNotesLength];
-    if (songNotesLength == 0) {
-        chosenSong = &testSong;
-    }
+    var chosenSong = if (songNotesLength == 0)
+        &testSong
+    else
+        songNotesPointer[0..songNotesLength];
 
     var previous_note_amplitude: i32 = 7;
     var note_period: u8 = 0;
@@ -96,23 +96,18 @@ export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32
                 period_index += 1;
             }
         } else {
-            while (j < period_or_end) {
-                const samples_per_note_slice = samples_per_wave / 32;
+            var samples_left_to_do: i32 = @intCast(i32, samples_per_wave);
+            while (j < period_or_end and samples_left_to_do > 0) {
+                const samples_per_note_slice: i32 = @divFloor(samples_left_to_do, @intCast(i32, note.waveform.len - note_period));
+                samples_left_to_do -= samples_per_note_slice;
+
                 var k: i32 = 0;
                 const note_amplitude: i32 = note.waveform[note_period];
                 while (j < period_or_end and k < samples_per_note_slice) : (j += 1) {
                     k += 1;
                     const wave_as_u4 = @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice);
-                    // if (j < 20) {
-                    //     const string = std.fmt.allocPrintZ(allocator, "fuck {d:.1}", .{wave_as_u4 * u4Tou8WaveTransformConstant}) catch unreachable;
-                    //     print_(string);
-                    //     allocator.free(string);
-                    // }
+
                     u8Array[j] = @floatToInt(u8, wave_as_u4 * u4Tou8WaveTransformConstant);
-                } else {
-                    // if (j < 20) {
-                    //     print_("hereio");
-                    // }
                 }
 
                 // increment stuff
