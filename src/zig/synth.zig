@@ -60,7 +60,7 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 /// generates 3 periods of each note starting near middle c (256hz, 0xf7)
 /// each time it generates 3 periods, it increases the hz until it loops
 export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32, songNotesPointer: [*]u8, songNotesLength: usize) void {
-    const u8Array = u8ArrayPointer[0..u8ArrayLength];
+    const sample_array = u8ArrayPointer[0..u8ArrayLength];
     if (!testSongInitialized) {
         testSongInitialized = true;
         const max_note = 55;
@@ -85,35 +85,21 @@ export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32
     var i: usize = 0;
     var periods_at_note: u8 = 0;
 
-    while (i < u8ArrayLength) {
-        const period_or_end = @min(u8ArrayLength, i + samples_per_wave);
-        var j: usize = i;
+    while (i < sample_array.len) {
+        const period_or_end = @min(sample_array.len, i + samples_per_wave);
+        var sample_index: usize = i;
         var period_index: u32 = 0;
         // really should extract these into functions
         if (note.note == null) {
-            while (j < period_or_end) : (j += 1) {
-                u8Array[j] = 127;
+            while (sample_index < period_or_end) : (sample_index += 1) {
+                sample_array[sample_index] = 127;
                 period_index += 1;
             }
         } else {
-            var samples_left_to_do: i32 = @intCast(i32, samples_per_wave);
-            while (j < period_or_end and samples_left_to_do > 0) {
-                const samples_per_note_slice: i32 = @divFloor(samples_left_to_do, @intCast(i32, note.waveform.len - note_period));
-                samples_left_to_do -= samples_per_note_slice;
-
-                var k: i32 = 0;
-                const note_amplitude: i32 = note.waveform[note_period];
-                while (j < period_or_end and k < samples_per_note_slice) : (j += 1) {
-                    k += 1;
-                    const wave_as_u4 = @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice);
-
-                    u8Array[j] = @floatToInt(u8, wave_as_u4 * u4Tou8WaveTransformConstant);
-                }
-
-                // increment stuff
-                note_period = (note_period + 1) % 32;
-                previous_note_amplitude = note_amplitude;
-            }
+            const updates = sfxBufferOnePeriod(sample_index, sample_array, samples_per_wave, note, note_period, period_or_end, previous_note_amplitude);
+            sample_index = updates.sample_index;
+            note_period = updates.note_period;
+            previous_note_amplitude = updates.previous_note_amplitude;
         }
         periods_at_note += 1;
         i += samples_per_wave;
@@ -127,6 +113,42 @@ export fn sfxBuffer(u8ArrayPointer: [*]u8, u8ArrayLength: usize, sampleRate: u32
             samples_per_wave = samplesPerWave(note, sampleRate);
         }
     }
+}
+
+const sfxBufferOnePeriodValues = struct {
+    sample_index: usize,
+    note_period: u8,
+    previous_note_amplitude: i32,
+};
+
+fn sfxBufferOnePeriod(sample_index_start: usize, sample_array: []u8, samples_per_wave: u32, note: Note, note_period_start: u8, period_or_end: usize, previous_note_amplitude_start: i32) sfxBufferOnePeriodValues {
+    var sample_index = sample_index_start;
+    var note_period = note_period_start;
+    var previous_note_amplitude = previous_note_amplitude_start;
+
+    var samples_left_to_do: i32 = @intCast(i32, samples_per_wave);
+    while (sample_index < period_or_end and samples_left_to_do > 0) {
+        const samples_per_note_slice: i32 = @divFloor(samples_left_to_do, @intCast(i32, note.waveform.len - note_period));
+        samples_left_to_do -= samples_per_note_slice;
+
+        var k: i32 = 0;
+        const note_amplitude: i32 = note.waveform[note_period];
+        while (sample_index < period_or_end and k < samples_per_note_slice) : (sample_index += 1) {
+            k += 1;
+            const wave_as_u4 = @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice);
+
+            sample_array[sample_index] = @floatToInt(u8, wave_as_u4 * u4Tou8WaveTransformConstant);
+        }
+
+        // increment stuff
+        note_period = (note_period + 1) % 32;
+        previous_note_amplitude = note_amplitude;
+    }
+    return .{
+        .sample_index = sample_index,
+        .note_period = note_period,
+        .previous_note_amplitude = previous_note_amplitude,
+    };
 }
 
 export fn u8ArrayToF32Array(u8Array: [*]u8, u8ArrayLength: usize, f32Array: [*]f32, f32ArrayLength: usize) void {
