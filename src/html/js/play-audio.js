@@ -4,16 +4,23 @@ let audioContext = null;
 function __parseConstants(callback){
     const sampleRateEl = document.getElementById("playback-hz");
     const songNotesEl = document.getElementById("notes-to-play");
+    const noteLengthEl = document.getElementById("note-length");
     const secondsLengthEl = document.getElementById("seconds-length");
 
     var sampleRate = sampleRateEl.value - 0;
     const songNotes = songNotesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
+    const noteLength = noteLengthEl.value - 0;
     const secondsLength = secondsLengthEl.value - 0;
     if (sampleRate == 0) {
 	sampleRate = 44100;
     }
-    callback(sampleRate, songNotes, secondsLength);
-    
+    if (noteLength == 0) {
+	noteLength = 100;
+    }
+    if (songNotes.length == 0) {
+	throw new Error("must include notes to play");
+    }
+    callback(sampleRate, songNotes, noteLength, secondsLength);    
 }
 
 function parseConstants(callback){
@@ -55,7 +62,7 @@ async function main(){
 
        should be able to play multiple at once
     */
-    function playSoundEffect(sampleRate, songNotes, secondsLength) {
+    function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength) {
 	let allocatorIndex=0;
 	
 	if (sampleRate !== lastSampleRate) {
@@ -91,7 +98,8 @@ async function main(){
 	sfxBuffer(
 	    u8Array.byteOffset, u8Array.length,
 	    audioContext.sampleRate,
-	    songNotes.byteOffset, songNotes.length
+	    songNotes.byteOffset, songNotes.length,
+	    noteLength
 	);
 
 	//console.log(u8Array);
@@ -116,7 +124,7 @@ async function main(){
     parseConstants(playSoundEffect);
 }
 
-async function downloadWav(sampleRate, songNotes, secondsLength){
+async function downloadWav(sampleRate, songNotes, noteLength, secondsLength){
     let allocatorIndex=0;
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
@@ -140,7 +148,8 @@ async function downloadWav(sampleRate, songNotes, secondsLength){
     sfxBuffer(
 	u8Array.byteOffset, u8Array.length,
 	sampleRate,
-	songNotes.byteOffset, songNotes.length
+	songNotes.byteOffset, songNotes.length,
+	noteLength
     );
 
     wav.fromScratch(1, hz, '8', u8Array, {method: "point", LPF: false});
