@@ -81,31 +81,68 @@ export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize,
     var chosenSong = in_songNotesPointer[0..in_songNotesLength];
 
     var previous_note_amplitude: i32 = 7;
+    // notes have waveforms, which are all 32 in length.
+    // as we're writing the note to the output sample buffer
+    // we need to move from index to index inside the note's
+    // waveform, and this keeps track of it.
+    //
+    // When we swap notes we want a smooth transition
+    // from note to note, so the next note keeps playing its
+    // own waveform from whatever position the previous
+    // note was at when it stopped.
+    //
+    // This is especially useful when swapping between
+    // notes of the same waveform but different frequencies (hz)
+    // which allows us to smoothly transition between them
+    // without 'audio clicking'.
     var note_period: u8 = 0;
 
+    // index into the chosenSong
     var song_index: usize = 0;
     var note = getNote(song_index, chosenSong);
     var samples_per_wave = samplesPerWave(note, sampleRate);
 
+    // index into the output sample_array
     var sample_index: usize = 0;
 
+    // each loop of this array should write one note's worth of samples
+    // to the sample_array or an equivalent amount of silence
     while (sample_index < sample_array.len) {
+
+        // we want to write out the next full note to the sample_array,
+        // but can't overshoot the length.
+        // notes are noteLength long in samples
+        //
+        // maybe i should consider writing silence if we can't fit in a
+        // full note, but i think this is a fine default for now.
+        // change it yourself if it is inconvienient for you.
+        // you shouldn't have to, as you pass in both out_sampleArrayLength,
+        // and noteLength, so just make sure the former is divisible
+        // evenly by the latter
         const sample_index_iter_end = @min(sample_array.len, sample_index + noteLength);
 
-        // really should extract these into functions
         if (note.note == null) {
+            // write silence to the buffer for a null note
             while (sample_index < sample_index_iter_end) : (sample_index += 1) {
                 sample_array[sample_index] = 127;
             }
         } else {
+            // write noteLength many samples of note to the sample_array
+            // increase the sample_index accordingly,
+            // and save information like note_period and
+            // previous_note_amplitude, which are required to smoothly
+            // transition into the next note.
             const updates = sfxBufferPlayNoteUntilIndex(sample_index, sample_index_iter_end, sample_array, samples_per_wave, note, note_period, previous_note_amplitude);
             sample_index = updates.sample_index;
             note_period = updates.note_period;
             previous_note_amplitude = updates.previous_note_amplitude;
         }
 
+        // play the next note
         if (true) {
             song_index += 1;
+            // loop the song. could have used modulo, but may add additional
+            // logic
             if (song_index >= chosenSong.len) {
                 song_index = 0;
             }
@@ -130,23 +167,51 @@ fn sfxBufferPlayNoteUntilIndex(sample_index_start: usize, sample_index_iter_end:
     var note_period = note_period_start;
     var previous_note_amplitude = previous_note_amplitude_start;
 
+    // the outer loop ensures the inner loop has done enough iterations
+    // to fill out the whole note length
     while (sample_index < sample_index_iter_end) {
+
+        // this inner loop only fills in one period.
+        // we need the two loops because samples_left_to_do needs to
+        // be tracked over time and allows for error corrections
+        // when samples_per_note is not evenly divisible
+        // into the note.waveform.len (common)
+        //
+        // if we did not do this, notes could only be evenly divisible
+        // frequencies
         var samples_left_to_do: i32 = @intCast(i32, samples_per_wave);
         while (sample_index < sample_index_iter_end and samples_left_to_do > 0) {
+            // bookkeeping to ensure error correction for uneven divisibility
+            // is taken into account
             const samples_per_note_slice: i32 = @divFloor(samples_left_to_do, @intCast(i32, note.waveform.len - note_period));
             samples_left_to_do -= samples_per_note_slice;
 
+            // write one slice of the note to the sample_array
+            // what is a note slice? well since notes have 32 samples
+            // in their wave form, and we want to evenly interpolate between
+            // those samples, one slice is the number of samples from
+            // one waveform index to the next.
             var k: i32 = 0;
             const note_amplitude: i32 = note.waveform[note_period];
             while (sample_index < sample_index_iter_end and k < samples_per_note_slice) : (sample_index += 1) {
                 k += 1;
+                // waves are u4 and we must convert that to our
+                // own output format, u8.
+                //
+                // currently we fill out the full 0-255 space.
+                // this formula is part linear interpolation, and
+                // part correcting for the transition from u4 to u8
                 const wave_as_u4 = @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice);
 
                 out_sampleArray[sample_index] = @floatToInt(u8, wave_as_u4 * u4Tou8WaveTransformConstant);
             }
 
-            // increment stuff
+            // increment note period so we play the next part of the waveform
+            // on the next pass
             note_period = (note_period + 1) % 32;
+            // keep track of the previous amplitude, because
+            // we need to interpolate from it to the next note
+            // on the next round this code is run.
             previous_note_amplitude = note_amplitude;
         }
     }
@@ -157,6 +222,9 @@ fn sfxBufferPlayNoteUntilIndex(sample_index_start: usize, sample_index_iter_end:
     };
 }
 
+/// Converts unsigned 8 bit wave data to float 32 wave data.
+/// 8 bit is 0-256
+/// float 32 is -1.0 to 1.0
 export fn u8ArrayToF32Array(in_u8Array: [*]const u8, in_u8ArrayLength: usize, out_f32Array: [*]f32, out_f32ArrayLength: usize) void {
     const size = @min(in_u8ArrayLength, out_f32ArrayLength);
     for (in_u8Array[0..size]) |b, i| out_f32Array[i] = @intToFloat(f32, b) / 128.0 - 1;
