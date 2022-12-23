@@ -5,3 +5,29 @@
 .hide-wavefile-js{
     display: none;
 }
+
+body{
+    padding: 0px;
+    margin: 0px;
+    display:flex;
+    height: 100vh;
+    flex-direction: column;
+}
+
+main {
+    display: block;
+    flex: 1;
+    padding: 8px;
+}
+
+button {
+    margin: 5px 0px;
+}
+
+footer {
+    flex: 0;
+    margin-top: 10px;
+    border: solid;
+    border-width: 2px 0px 0px 0px;
+    padding: 8px;
+}
