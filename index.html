@@ -5,12 +5,19 @@
     <title>Simple Zig Synthesizer (WebAssembly)</title>
     <link rel="icon" type="image/x-icon" href="src/html/images/favicon.ico">
     <link rel="stylesheet" href="src/html/css/style.css"></link>
+    <script src="src/html/js/dark-mode.js"></script>
   </head>
-  <body>
+  <body class="dark">
     <main>
       <ol>
-	<li><label for="playback-hz">Playback hz</label><input id="playback-hz" type="number" value="44100"></input></li>
-	<li><label for="seconds-length">Length in seconds (whole number). Can't be that high.</label><input id="seconds-length" type="number" value="2"></input></li>
+	<li>
+	  <label for="playback-hz">Playback hz</label>
+	  <input id="playback-hz" type="number" value="44100"></input>
+	</li>
+	<li>
+	  <label for="seconds-length">Length in seconds (whole number). Can't be that high.</label>
+	  <input id="seconds-length" type="number" value="2"></input>
+	</li>
 	<li>
 	  <label for="notes-to-play">Round robin note indexes</label>
 	  <input id="notes-to-play" aria-describedby="notes-to-play-describe" pattern="(\d+\s*,\s*)+" value="47, 48, 49"></input>
@@ -21,7 +28,10 @@
 	  <input id="waves-to-play" aria-describedby="waves-to-play-describe" pattern="(\d+\s*,\s*)+" value="0,0,0,0,1,2,1,1,1,2"></input>
 	  <p id="waves-to-play-describe">comma separated 8 bit note indexes, can be between 0 and 15</p>
 	</li>
-	<li><label for="note-length">Note length in samples (whole number).</label><input id="note-length" type="number" value="5000"></input></li>
+	<li>
+	  <label for="note-length">Note length in samples (whole number).</label>
+	  <input id="note-length" type="number" value="5000"></input>
+	</li>
 
       </ol>
       <pre id="output"></pre>
@@ -60,6 +70,8 @@ the generated wave forms for visual inspection -->
 	  <a href="license-tic80.md">tic80 license</a>
 	</li>
       </ol>
+
+      <button onclick="toggleDarkmode()">toggle darkmode</button>
     </footer>
     <script>
       if(wavefile.WaveFile){

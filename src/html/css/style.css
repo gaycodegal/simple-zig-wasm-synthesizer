@@ -1,5 +1,5 @@
 .error {
-    color: #E00000; //5.03:1 on white
+    color: #E00000; /*5.03:1 on white*/
 }
 
 .hide-wavefile-js{
@@ -12,6 +12,7 @@ body{
     display:flex;
     height: 100vh;
     flex-direction: column;
+    font-family: sans-serif;
 }
 
 main {
@@ -30,4 +31,18 @@ footer {
     border: solid;
     border-width: 2px 0px 0px 0px;
     padding: 8px;
+}
+
+/* darkmode */
+
+.dark {
+    background: #333;
+    color: white;
+}
+
+.dark a:visited {
+    color: orange;
+}
+.dark a {
+    color: #9999FF;
 }
