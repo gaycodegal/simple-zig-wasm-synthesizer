@@ -4,11 +4,13 @@ let audioContext = null;
 function __parseConstants(callback){
     const sampleRateEl = document.getElementById("playback-hz");
     const songNotesEl = document.getElementById("notes-to-play");
+    const wavesEl = document.getElementById("waves-to-play");
     const noteLengthEl = document.getElementById("note-length");
     const secondsLengthEl = document.getElementById("seconds-length");
 
     var sampleRate = sampleRateEl.value - 0;
     const songNotes = songNotesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
+    const waves = wavesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
     const noteLength = noteLengthEl.value - 0;
     const secondsLength = secondsLengthEl.value - 0;
     if (sampleRate == 0) {
@@ -20,7 +22,7 @@ function __parseConstants(callback){
     if (songNotes.length == 0) {
 	throw new Error("must include notes to play");
     }
-    callback(sampleRate, songNotes, noteLength, secondsLength);    
+    callback(sampleRate, songNotes, noteLength, secondsLength, waves);    
 }
 
 function parseConstants(callback){
@@ -62,7 +64,7 @@ async function main(){
 
        should be able to play multiple at once
     */
-    function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength) {
+    function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves) {
 	let allocatorIndex=0;
 	
 	if (sampleRate !== lastSampleRate) {
@@ -70,12 +72,10 @@ async function main(){
 	} else {
 	    audioContext = audioContext ?? new AudioContext();
 	}
-
-	const inputSong = new Uint8Array(memory.buffer, allocatorIndex, songNotes.length);
-	for (var i = 0; i <  songNotes.length; ++i) {
-	    inputSong[i] = songNotes[i];
-	}
-	allocatorIndex += songNotes.length;
+	let inputSong;
+	[allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
+	let inputWaves;
+	[allocatorIndex, inputWaves] = u8ArrayPopulate(memory.buffer, allocatorIndex, waves);
 	const u8Array = new Uint8Array(memory.buffer, allocatorIndex, audioContext.sampleRate * secondsLength);
 	allocatorIndex += u8Array.length;
 
@@ -98,10 +98,10 @@ async function main(){
 	sfxBuffer(
 	    u8Array.byteOffset, u8Array.length,
 	    audioContext.sampleRate,
-	    songNotes.byteOffset, songNotes.length,
-	    noteLength
+	    inputSong.byteOffset, inputSong.length,
+	    noteLength,
+	    inputWaves.byteOffset, inputWaves.length,
 	);
-
 	//console.log(u8Array);
 	
 	// copy the sound to Float 32 because webassembly faster
@@ -124,16 +124,15 @@ async function main(){
     parseConstants(playSoundEffect);
 }
 
-async function downloadWav(sampleRate, songNotes, noteLength, secondsLength){
+async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
     let allocatorIndex=0;
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
 
-    const inputSong = new Uint8Array(memory.buffer, allocatorIndex, songNotes.length);
-    for (var i = 0; i <  songNotes.length; ++i) {
-	inputSong[i] = songNotes[i];
-    }
-    allocatorIndex += songNotes.length;
+    let inputSong;
+    [allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
+    let inputWaves;
+    [allocatorIndex, inputWaves] = u8ArrayPopulate(memory.buffer, allocatorIndex, waves);
 
 
     const hz = sampleRate;
@@ -144,12 +143,14 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength){
     const WaveFile = wavefile.WaveFile;
     wav = new WaveFile();
 
+
     // create the sound
     sfxBuffer(
 	u8Array.byteOffset, u8Array.length,
 	sampleRate,
-	songNotes.byteOffset, songNotes.length,
-	noteLength
+	inputSong.byteOffset, inputSong.length,
+	noteLength,
+	inputWaves.byteOffset, inputWaves.length,
     );
 
     wav.fromScratch(1, hz, '8', u8Array, {method: "point", LPF: false});
@@ -162,4 +163,13 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength){
 	a.setAttribute("download", name);
 	a.click();
     }
+}
+
+function u8ArrayPopulate(buffer, allocatorIndex, sourceArray){
+    const array = new Uint8Array(buffer, allocatorIndex, sourceArray.length);
+    for (var i = 0; i <  sourceArray.length; ++i) {
+	array[i] = sourceArray[i];
+    }
+    allocatorIndex += sourceArray.length;
+    return [allocatorIndex, array];
 }

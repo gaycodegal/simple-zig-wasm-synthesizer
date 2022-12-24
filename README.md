@@ -16,13 +16,16 @@ Could I have used wave files for sfx and xm for music? Definitely, but I didn't 
 In its current state, it could be used to play short sound effects for
 online games. The code size is at last check ~5kb in js + wasm, or 2.6kb zipped. The audio it generates is 45kb/s 8bit audio.
 
+- Play different notes from a note bank
+- Play different waveforms from a waveform bank
+
 ### Soon
 
-- use multiple different wave forms in one sound effect
+- Use memory.grow as appropriate
+- Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
 
 ### Later
 
-- Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
 - Make music be able to use notes and sfx alike to play music
 - Make an optional file format for the music
 

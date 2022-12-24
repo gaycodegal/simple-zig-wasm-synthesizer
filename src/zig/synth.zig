@@ -29,7 +29,7 @@ const Note = struct {
 /// fake note otherwise.
 ///
 /// a silent note has .note set to null
-fn getNote(pos: usize, song: []u8) Note {
+fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8) Note {
     // if greater than song length, or bad note at index,
     // fake frequency is used, and note is set to null
     var hz: u16 = 256;
@@ -43,8 +43,20 @@ fn getNote(pos: usize, song: []u8) Note {
         }
     }
 
+    var waveform = &waveforms.SilentWave;
+    if (wave_pos < song_waves.len) {
+        const bank_pos = song_waves[wave_pos];
+        if (bank_pos < waveforms.WaveBank.len) {
+            waveform = waveforms.WaveBank[bank_pos];
+        } else if (wave_pos == 0) {
+            print_("second fail");
+        }
+    } else if (wave_pos == 0) {
+        print_("first fail");
+    }
+
     return Note{
-        .waveform = &waveforms.SineWave,
+        .waveform = waveform,
         .hz = hz,
         .note = note,
     };
@@ -75,10 +87,11 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 /// after the end of this sound effect will be set to 127 or "silence"
 ///
 /// the out_sampleArray is a 8 bit waveform buffer
-export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize, sampleRate: u32, in_songNotesPointer: [*]u8, in_songNotesLength: usize, noteLength: u32) void {
+export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize, sampleRate: u32, in_songNotesPointer: [*]u8, in_songNotesLength: usize, noteLength: u32, in_noteWaveFormsPointer: [*]u8, in_noteWaveFormsLength: usize) void {
     const sample_array = out_sampleArrayPointer[0..out_sampleArrayLength];
 
     var chosenSong = in_songNotesPointer[0..in_songNotesLength];
+    const noteWaveForms = in_noteWaveFormsPointer[0..in_noteWaveFormsLength];
 
     var previous_note_amplitude: i32 = 7;
     // notes have waveforms, which are all 32 in length.
@@ -99,7 +112,8 @@ export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize,
 
     // index into the chosenSong
     var song_index: usize = 0;
-    var note = getNote(song_index, chosenSong);
+    var wave_index: usize = 0;
+    var note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
     var samples_per_wave = samplesPerWave(note, sampleRate);
 
     // index into the output sample_array
@@ -142,11 +156,17 @@ export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize,
         if (true) {
             song_index += 1;
             // loop the song. could have used modulo, but may add additional
-            // logic
+            // logic later
             if (song_index >= chosenSong.len) {
                 song_index = 0;
             }
-            note = getNote(song_index, chosenSong);
+            wave_index += 1;
+            // loop the waveforms. could have used modulo, but may
+            // add additional logic later
+            if (wave_index >= noteWaveForms.len) {
+                wave_index = 0;
+            }
+            note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
             samples_per_wave = samplesPerWave(note, sampleRate);
         }
     }
