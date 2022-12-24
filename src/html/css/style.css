@@ -33,6 +33,21 @@ footer {
     padding: 8px;
 }
 
+li {
+    margin: 10px 0;
+}
+
+/* touch target size */
+@media only screen and (max-width: 600px) {  
+    a, button, input {
+	min-height: 48px;
+	min-width: 48px;
+	display: inline-block;
+	vertical-align: middle;
+	line-height: 48px;
+    }
+}
+
 /* darkmode */
 
 .dark {
