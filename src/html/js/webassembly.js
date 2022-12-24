@@ -1,4 +1,4 @@
-function fetchWASMBinary(path){
+export function fetchWASMBinary(path){
     return new Promise((accept, reject)=>{
 	function downloadSuccess() {
 	    const dataview = new DataView(this.response);

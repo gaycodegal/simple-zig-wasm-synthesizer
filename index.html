@@ -51,12 +51,10 @@ not included in release, just used for testing to allow downloading
 the generated wave forms for visual inspection -->
       <script src="src/html/js/wavefile.js"></script>
       
-      <script src="src/html/js/webassembly.js"></script>
-      <script src="src/html/js/synth-loader.js"></script>
-      <script src="src/html/js/play-audio.js"></script>
+      <script type="module" src="src/html/js/play-audio.js"></script>
       <button onclick="main()" aria-describedby="warning">play a sound</button>
       <br>
-      <button class="hide-wavefile-js" onclick="parseConstants(downloadWav)">download as .wav file</button>      
+      <button class="hide-wavefile-js" onclick="downloadWav()">download as .wav file</button>      
     </main>
     <footer>
       <a href="https://github.com/gaycodegal/simple-zig-wasm-synthesizer">this project itself is mit licensed</a>

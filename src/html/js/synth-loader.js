@@ -1,3 +1,4 @@
+import { fetchWASMBinary } from './webassembly.js';
 
 async function _synthModule (accept, reject){
     const result = await fetchWASMBinary('src/html/js/synth.wasm');
@@ -19,7 +20,6 @@ async function _synthModule (accept, reject){
 	});
 }
 
-function synthModule(){
+export function synthModule(){
     return new Promise(_synthModule);
 }
-

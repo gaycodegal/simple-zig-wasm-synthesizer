@@ -1,3 +1,6 @@
+import { synthModule } from './synth-loader.js';
+import { u8ArrayPopulate, growMemoryIfNeededForSfxBuffer, allocateTo, createTempSfxBuffer } from './synth.js';
+
 const synthWASMModulePromise = synthModule();
 let audioContext = null;
 
@@ -46,15 +49,7 @@ function printError(text){
 
 let lastSampleRate = 0;
 
-function allocateTo(alloced, size) {
-    const mod = alloced % size;
-    if (mod != 0){
-	alloced += size - mod;
-    }
-    return alloced;
-}
-
-async function main(){
+export async function main(){
 
     const synthWASMModule = await synthWASMModulePromise;
     
@@ -67,33 +62,15 @@ async function main(){
     function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves) {
 	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
 	
-	let allocatorIndex=0;
-
-	io_previous_note_amplitude = new Uint8Array(memory.buffer, allocatorIndex, 1);
-	io_previous_note_amplitude[0] = 7;
-	allocatorIndex += 1;	
-
-	io_note_period = new Uint8Array(memory.buffer, allocatorIndex, 1);
-	io_note_period[0] = 0;
-	allocatorIndex += 1;
-
 	if (sampleRate !== lastSampleRate) {
 	    lastSampleRate = sampleRate;
 	    audioContext = new AudioContext({sampleRate});
 	} else {
 	    audioContext = audioContext ?? new AudioContext({sampleRate});
 	}
-	let inputSong;
-	[allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
-	let inputWaves;
-	[allocatorIndex, inputWaves] = u8ArrayPopulate(memory.buffer, allocatorIndex, waves);
-	const u8Array = new Uint8Array(memory.buffer, allocatorIndex, audioContext.sampleRate * secondsLength);
-	allocatorIndex += u8Array.length;
 
-	// abusing the fact that javascript is single threaded to only allocate
-	// memory during this function, and disposing of it afterwards.
-	// assumes the memory address space is big enough to fit in both
-	// arrays into memory. I should fix that
+	let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, audioContext.sampleRate, songNotes, noteLength, secondsLength, waves);
+
 	allocatorIndex = allocateTo(allocatorIndex, 4);
 	const f32Array = new Float32Array(memory.buffer, allocatorIndex, audioContext.sampleRate * secondsLength);
 	allocatorIndex += f32Array.length * 4;
@@ -103,25 +80,14 @@ async function main(){
 	    audioContext.sampleRate * secondsLength, // secondsLength seconds
 	    audioContext.sampleRate
 	);
-
-
-	// create the sound
-	sfxBuffer(
-	    u8Array.byteOffset, u8Array.length,
-	    audioContext.sampleRate,
-	    inputSong.byteOffset, inputSong.length,
-	    noteLength,
-	    inputWaves.byteOffset, inputWaves.length,
-	    io_previous_note_amplitude.byteOffset,
-	    io_note_period.byteOffset,
-	);
-	//console.log(u8Array);
+	
+	// console.log(sample_buffer);
 	
 	// copy the sound to Float 32 because webassembly faster
 	// we can't just pass the audioBuffer's buffer directly because
 	// webassembly can only access memory it owns
 	u8ArrayToF32Array(
-	    u8Array.byteOffset, u8Array.length,
+	    sample_buffer.byteOffset, sample_buffer.length,
 	    f32Array.byteOffset, f32Array.length);
 
 	// copy the Float 32 to the audio context
@@ -137,39 +103,17 @@ async function main(){
     parseConstants(playSoundEffect);
 }
 
-async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
+export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
     const synthWASMModule = await synthWASMModulePromise;
-    const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
+    const {memory, sfxBuffer} = synthWASMModule;
     growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
-    let allocatorIndex=0;
-
-    let inputSong;
-    [allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
-    let inputWaves;
-    [allocatorIndex, inputWaves] = u8ArrayPopulate(memory.buffer, allocatorIndex, waves);
-
-
     const hz = sampleRate;
-    const length = hz * secondsLength;
+    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, secondsLength, waves);
 
-    const u8Array = new Uint8Array(memory.buffer, allocatorIndex, length);
-    allocatorIndex += length;
     const WaveFile = wavefile.WaveFile;
-    wav = new WaveFile();
+    const wav = new WaveFile();
 
-
-    // create the sound
-    sfxBuffer(
-	u8Array.byteOffset, u8Array.length,
-	sampleRate,
-	inputSong.byteOffset, inputSong.length,
-	noteLength,
-	inputWaves.byteOffset, inputWaves.length,
-	null,
-	null,
-    );
-
-    wav.fromScratch(1, hz, '8', u8Array, {method: "point", LPF: false});
+    wav.fromScratch(1, hz, '8', sample_buffer, {method: "point", LPF: false});
     download(wav.toDataURI(), "raw_wav_demo.wav");
 
     function download(d, name){
@@ -181,23 +125,9 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, wav
     }
 }
 
-function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves){
-    const io_period_and_amplitude = 2;
-    const sampleU8 = sampleRate * secondsLength;
-    const sampleF32 = sampleRate * secondsLength * 4;
-    const notesL = songNotes.length;
-    const wavesL = waves.length;
-    const totalNeeded = sampleU8 + sampleF32 + notesL + wavesL + io_period_and_amplitude;
-    if (memory.buffer.byteLength < totalNeeded) {
-	memory.grow(totalNeeded - memory.buffer.byteLength);
-    }
+function downloadWav(){
+    parseConstants(_downloadWav);
 }
 
-function u8ArrayPopulate(buffer, allocatorIndex, sourceArray){
-    const array = new Uint8Array(buffer, allocatorIndex, sourceArray.length);
-    for (var i = 0; i <  sourceArray.length; ++i) {
-	array[i] = sourceArray[i];
-    }
-    allocatorIndex += sourceArray.length;
-    return [allocatorIndex, array];
-}
+window.main = main;
+window.downloadWav = downloadWav;
