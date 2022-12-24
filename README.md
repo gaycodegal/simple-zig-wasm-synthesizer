@@ -65,7 +65,6 @@ function u8ArrayPopulate(buffer, allocatorIndex, sourceArray){
 
 ### Soon
 
-- Use memory.grow as appropriate
 - Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
 
 ### Later

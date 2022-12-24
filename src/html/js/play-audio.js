@@ -65,6 +65,8 @@ async function main(){
        should be able to play multiple at once
     */
     function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves) {
+	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
+	
 	let allocatorIndex=0;
 	
 	if (sampleRate !== lastSampleRate) {
@@ -125,6 +127,7 @@ async function main(){
 }
 
 async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
+    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
     let allocatorIndex=0;
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
@@ -162,6 +165,17 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, wav
 	a.setAttribute("href", d);
 	a.setAttribute("download", name);
 	a.click();
+    }
+}
+
+function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves){
+    const sampleU8 = sampleRate * secondsLength;
+    const sampleF32 = sampleRate * secondsLength * 4;
+    const notesL = songNotes.length;
+    const wavesL = waves.length;
+    const totalNeeded = sampleU8 + sampleF32 + notesL + wavesL;
+    if (memory.buffer.byteLength < totalNeeded) {
+	memory.grow(totalNeeded - memory.buffer.byteLength);
     }
 }
 
