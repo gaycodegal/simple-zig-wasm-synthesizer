@@ -70,6 +70,7 @@ async function main(){
 	let allocatorIndex=0;
 	
 	if (sampleRate !== lastSampleRate) {
+	    lastSampleRate = sampleRate;
 	    audioContext = new AudioContext({sampleRate});
 	} else {
 	    audioContext = audioContext ?? new AudioContext({sampleRate});
