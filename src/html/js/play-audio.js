@@ -1,7 +1,7 @@
 const synthWASMModulePromise = synthModule();
 let audioContext = null;
 
-function __parseConstants(callback){
+async function __parseConstants(callback){
     const sampleRateEl = document.getElementById("playback-hz");
     const songNotesEl = document.getElementById("notes-to-play");
     const wavesEl = document.getElementById("waves-to-play");
@@ -22,12 +22,12 @@ function __parseConstants(callback){
     if (songNotes.length == 0) {
 	throw new Error("must include notes to play");
     }
-    callback(sampleRate, songNotes, noteLength, secondsLength, waves);    
+    await callback(sampleRate, songNotes, noteLength, secondsLength, waves);    
 }
 
-function parseConstants(callback){
-    try{
-	__parseConstants(callback);
+async function parseConstants(callback){
+    try {
+	await __parseConstants(callback);
     } catch(e){
 	printError(`${e.name} ${e.message}`);
     }
@@ -68,7 +68,15 @@ async function main(){
 	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
 	
 	let allocatorIndex=0;
-	
+
+	io_previous_note_amplitude = new Uint8Array(memory.buffer, allocatorIndex, 1);
+	io_previous_note_amplitude[0] = 7;
+	allocatorIndex += 1;	
+
+	io_note_period = new Uint8Array(memory.buffer, allocatorIndex, 1);
+	io_note_period[0] = 0;
+	allocatorIndex += 1;
+
 	if (sampleRate !== lastSampleRate) {
 	    lastSampleRate = sampleRate;
 	    audioContext = new AudioContext({sampleRate});
@@ -104,6 +112,8 @@ async function main(){
 	    inputSong.byteOffset, inputSong.length,
 	    noteLength,
 	    inputWaves.byteOffset, inputWaves.length,
+	    io_previous_note_amplitude.byteOffset,
+	    io_note_period.byteOffset,
 	);
 	//console.log(u8Array);
 	
@@ -128,10 +138,10 @@ async function main(){
 }
 
 async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
-    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
-    let allocatorIndex=0;
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer, u8ArrayToF32Array} = synthWASMModule;
+    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
+    let allocatorIndex=0;
 
     let inputSong;
     [allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
@@ -155,6 +165,8 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, wav
 	inputSong.byteOffset, inputSong.length,
 	noteLength,
 	inputWaves.byteOffset, inputWaves.length,
+	null,
+	null,
     );
 
     wav.fromScratch(1, hz, '8', u8Array, {method: "point", LPF: false});
@@ -170,11 +182,12 @@ async function downloadWav(sampleRate, songNotes, noteLength, secondsLength, wav
 }
 
 function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves){
+    const io_period_and_amplitude = 2;
     const sampleU8 = sampleRate * secondsLength;
     const sampleF32 = sampleRate * secondsLength * 4;
     const notesL = songNotes.length;
     const wavesL = waves.length;
-    const totalNeeded = sampleU8 + sampleF32 + notesL + wavesL;
+    const totalNeeded = sampleU8 + sampleF32 + notesL + wavesL + io_period_and_amplitude;
     if (memory.buffer.byteLength < totalNeeded) {
 	memory.grow(totalNeeded - memory.buffer.byteLength);
     }

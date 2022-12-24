@@ -87,13 +87,29 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 /// after the end of this sound effect will be set to 127 or "silence"
 ///
 /// the out_sampleArray is a 8 bit waveform buffer
-export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize, sampleRate: u32, in_songNotesPointer: [*]u8, in_songNotesLength: usize, noteLength: u32, in_noteWaveFormsPointer: [*]u8, in_noteWaveFormsLength: usize) void {
+export fn sfxBuffer(
+    out_sampleArrayPointer: [*]u8,
+    out_sampleArrayLength: usize,
+    sampleRate: u32,
+    in_songNotesPointer: [*]u8,
+    in_songNotesLength: usize,
+    noteLength: u32,
+    in_noteWaveFormsPointer: [*]u8,
+    in_noteWaveFormsLength: usize,
+    io_previous_note_amplitude: ?*u8,
+    io_note_period: ?*u8,
+) void {
     const sample_array = out_sampleArrayPointer[0..out_sampleArrayLength];
 
     var chosenSong = in_songNotesPointer[0..in_songNotesLength];
     const noteWaveForms = in_noteWaveFormsPointer[0..in_noteWaveFormsLength];
 
+    // safety check in case bad value
     var previous_note_amplitude: i32 = 7;
+
+    if (io_previous_note_amplitude) |value| {
+        previous_note_amplitude = value.* % 16;
+    }
     // notes have waveforms, which are all 32 in length.
     // as we're writing the note to the output sample buffer
     // we need to move from index to index inside the note's
@@ -109,11 +125,16 @@ export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize,
     // which allows us to smoothly transition between them
     // without 'audio clicking'.
     var note_period: u8 = 0;
+    if (io_note_period) |value| {
+        note_period = value.*;
+    }
 
     // index into the chosenSong
     var song_index: usize = 0;
     var wave_index: usize = 0;
     var note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
+    // safety in case bad value
+    note_period = note_period % @intCast(u8, note.waveform.len);
     var samples_per_wave = samplesPerWave(note, sampleRate);
 
     // index into the output sample_array
@@ -169,6 +190,13 @@ export fn sfxBuffer(out_sampleArrayPointer: [*]u8, out_sampleArrayLength: usize,
             note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
             samples_per_wave = samplesPerWave(note, sampleRate);
         }
+    }
+
+    if (io_previous_note_amplitude) |value| {
+        value.* = @intCast(u8, previous_note_amplitude);
+    }
+    if (io_note_period) |value| {
+        value.* = note_period;
     }
 }
 
