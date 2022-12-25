@@ -11,6 +11,7 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     songIndex = 0;
     indexFloatCopyBuffer = 0;
     indexMainBuffer = 0;
+    running = true;
     
     constructor() {
 	super();
@@ -18,6 +19,8 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	    if (event.data.wasmBinary) {
 		await this.initWASM(event.data.wasmBinary);
 		this.port.postMessage('ready');
+	    } else if (event.data == 'stop') {
+		this.running = false;
 	    }
 
 	};
@@ -73,7 +76,7 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 
     process(inputs, outputs, parameters) {
 	if(!this.memory){
-	    return true;
+	    return this.running;
 	}
 
 	const outLen = outputs[0][0].length;
@@ -107,10 +110,9 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	    outputChannel[0].set(this.floatCopyBuffer);
 	}
 
-	return true;
+	return this.running;
     }
 }
 
-let fart = false;
 
 registerProcessor('zig-synth-worklet-processor', ZigSynthWorkletProcessor);

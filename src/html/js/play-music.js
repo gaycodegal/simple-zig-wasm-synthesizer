@@ -46,11 +46,13 @@ export async function startMusic() {
 	    if (event.data == "ready") {
 		stopMusic();
 		node.connect(audioContext.destination);
-		_stopMusic = node.disconnect();
+		_stopMusic = function (){
+		    node.disconnect();
+		    node.port.postMessage('stop');
+		}
 	    }
 	};
 
-	node.port.postMessage('from browser');
 	node.port.postMessage({wasmBinary: wasmBinary});
     });
 }
