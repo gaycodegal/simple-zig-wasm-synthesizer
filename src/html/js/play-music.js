@@ -1,4 +1,5 @@
 import { fetchWASMBinary } from './webassembly.js';
+import { parseConstants } from './ui-helper.js';
 
 class ZigSynthWorkletNode extends AudioWorkletNode {
     get parameterDescriptors() {
@@ -8,9 +9,9 @@ class ZigSynthWorkletNode extends AudioWorkletNode {
 	}];
     }
 
-  constructor(context) {
-    super(context, 'zig-synth-worklet-processor');
-  }
+    constructor(context) {
+	super(context, 'zig-synth-worklet-processor');
+    }
 }
 
 let _stopMusic = null;
@@ -24,14 +25,13 @@ export function stopMusic() {
 }
 
 export async function startMusic() {
+    parseConstants(music);
+}
+export async function music(sampleRate, songNotes, noteLength, secondsLength, waves) {
+    sampleRate = sampleRate ?? 44100;
     stopMusic();
 
-    const sampleRateEl = document.getElementById("playback-hz");
     const wasmBinary = await fetchWASMBinary('src/html/js/synth.wasm');
-    var sampleRate = sampleRateEl.value - 0;
-    if (sampleRate == 0) {
-	sampleRate = 44100;
-    }
 
     if (sampleRate !== window.lastSampleRate) {
 	window.lastSampleRate = sampleRate;
@@ -54,7 +54,20 @@ export async function startMusic() {
 	};
 
 	node.port.postMessage({wasmBinary: wasmBinary});
+	node.port.postMessage(musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves));
     });
+}
+
+function musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves){
+    return {
+	type: 'music',
+	sfx:[{
+	    sampleRate,
+	    songNotes,
+	    noteLength,
+	    waves,
+	}],
+    };
 }
 
 window.startMusic = startMusic;

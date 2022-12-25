@@ -4,16 +4,13 @@ import { u8ArrayPopulate, growMemoryIfNeededForSfxBuffer, allocateTo, createTemp
 // in own process, cannot directly interact with browser js
 class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     mainBuffer = null;
-    sampleRate = 44100;
-    waves = [0];
-    songNotes = [47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61];
-    noteLength = 5000;
     songIndex = 0;
     indexFloatCopyBuffer = 0;
     indexMainBuffer = 0;
     last_note_amplitude = 7;
     last_note_period = 0;
     running = true;
+    music = null;
     
     constructor() {
 	super();
@@ -23,8 +20,10 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 		this.port.postMessage('ready');
 	    } else if (event.data == 'stop') {
 		this.running = false;
-	    }
+	    } else if (event.data.type == 'music') {
+		this.music = event.data;
 
+	    }
 	};
 	this.port.onmessage = this.port.onmessage.bind(this);
     }
@@ -36,19 +35,17 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	this.u8ArrayToF32Array = synthWASM.u8ArrayToF32Array;
     }
 
-    sampleAlign(samplesRequired) {
-	if (samplesRequired % this.noteLength != 0) {
-	    samplesRequired += this.noteLength - (samplesRequired % this.noteLength);
+    sampleAlign(samplesRequired, sfx) {
+	if (samplesRequired % sfx.noteLength != 0) {
+	    samplesRequired += sfx.noteLength - (samplesRequired % sfx.noteLength);
 	}
 	return samplesRequired;
     }
 
-    initMainBuffer(samplesRequired) {
-	samplesRequired = this.sampleAlign(samplesRequired);
+    initMainBuffer(samplesRequired, sfx) {
+	samplesRequired = this.sampleAlign(samplesRequired, sfx);
 	let allocatorIndex = 0;
-
 	this.mainBuffer = new Uint8Array(this.memory.buffer, allocatorIndex, samplesRequired);
-	allocatorIndex += this.mainBuffer.length;
     }
 
     allocatedTo() {
@@ -62,13 +59,13 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	this.floatCopyBuffer = new Float32Array(this.memory.buffer, allocatorIndex, samplesRequired);
     }
 
-    fillMain () {
-	const samplesRequired = this.mainBuffer.length;
-	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, this.sampleRate, this.songNotes, this.noteLength, samplesRequired, this.waves, this.mainBuffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period);
+    fillBuffer (buffer, sfx) {
+	const samplesRequired = buffer.length;
+	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, sfx.sampleRate, sfx.songNotes, sfx.noteLength, samplesRequired, sfx.waves, buffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period);
 	this.last_note_amplitude = result.io_previous_note_amplitude;
 	this.last_note_period = result.io_note_period;
 
-	this.songIndex = (this.songIndex + samplesRequired / this.noteLength) % this.songNotes.length;
+	this.songIndex = (this.songIndex + samplesRequired / sfx.noteLength) % sfx.songNotes.length;
     }
 
     copyBufferToFloat() {
@@ -80,14 +77,14 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     }
 
     process(inputs, outputs, parameters) {
-	if(!this.memory){
+	if(!this.memory || !this.music){
 	    return this.running;
 	}
 
 	const outLen = outputs[0][0].length;
 	
 	if (!this.mainBuffer || outLen > this.mainBuffer.length) {
-	    this.initMainBuffer(outLen);
+	    this.initMainBuffer(outLen, this.music.sfx[0]);
 	}
 	
 	if (!this.floatCopyBuffer || outLen > this.floatCopyBuffer.length) {
@@ -98,7 +95,8 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	let copied = -1;
 	while(copied != 0 && this.indexFloatCopyBuffer < this.floatCopyBuffer.length) {
 	    if (this.indexMainBuffer == 0) {
-		this.fillMain();
+		
+		this.fillBuffer(this.mainBuffer, this.music.sfx[0]);
 	    }
 	    copied = this.copyBufferToFloat();
 	    this.indexFloatCopyBuffer += copied;

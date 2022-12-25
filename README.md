@@ -23,14 +23,16 @@ The wasm binary itself is only 2kb.
 - Play different notes from a note bank
 - Play different waveforms from a waveform bank
 - Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
+- Message passing setup for the music player to allow for dynamic choice of song
 
 ### Soon
 
-- message passing setup for the music player to allow for dynamic choice of song
+- Volume control via volume list
+- 4 track polyphony / maybe 8 track 4 volume, 4 sfx
 
 ### Later
 
-- configure max amplitude (probably in the f32 converter, for polyphony)
+- Waveform editing
 - Make music be able to use notes and sfx alike to play music
 - Make an optional file format for the music
 
