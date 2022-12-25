@@ -47,7 +47,6 @@ function printError(text){
     output.classList = "error";
 }
 
-let lastSampleRate = 0;
 
 export async function main(){
 
@@ -62,14 +61,14 @@ export async function main(){
     function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves) {
 	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
 	
-	if (sampleRate !== lastSampleRate) {
-	    lastSampleRate = sampleRate;
+	if (sampleRate !== window.lastSampleRate) {
+	    window.lastSampleRate = sampleRate;
 	    audioContext = new AudioContext({sampleRate});
 	} else {
 	    audioContext = audioContext ?? new AudioContext({sampleRate});
 	}
 
-	let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, audioContext.sampleRate, songNotes, noteLength, secondsLength, waves);
+	let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, audioContext.sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves);
 
 	allocatorIndex = allocateTo(allocatorIndex, 4);
 	const f32Array = new Float32Array(memory.buffer, allocatorIndex, audioContext.sampleRate * secondsLength);
@@ -108,7 +107,7 @@ export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLen
     const {memory, sfxBuffer} = synthWASMModule;
     growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
     const hz = sampleRate;
-    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, secondsLength, waves);
+    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves);
 
     const WaveFile = wavefile.WaveFile;
     const wav = new WaveFile();

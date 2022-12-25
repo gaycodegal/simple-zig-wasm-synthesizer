@@ -52,9 +52,14 @@ the generated wave forms for visual inspection -->
       <script src="src/html/js/wavefile.js"></script>
       
       <script type="module" src="src/html/js/play-audio.js"></script>
+      <script type="module" src="src/html/js/play-music.js"></script>
       <button onclick="main()" aria-describedby="warning">play a sound</button>
       <br>
-      <button class="hide-wavefile-js" onclick="downloadWav()">download as .wav file</button>      
+      <button onclick="startMusic()">start music</button>
+      <button onclick="stopMusic()">stop music</button>
+      <br>
+      <button class="hide-wavefile-js" onclick="downloadWav()">download as .wav file</button>
+      
     </main>
     <footer>
       <a href="https://github.com/gaycodegal/simple-zig-wasm-synthesizer">this project itself is mit licensed</a>

@@ -1,3 +1,4 @@
+import { fetchWASMBinary } from './webassembly.js';
 
 class ZigSynthWorkletNode extends AudioWorkletNode {
     get parameterDescriptors() {
@@ -12,30 +13,47 @@ class ZigSynthWorkletNode extends AudioWorkletNode {
   }
 }
 
-let stopMusic = null;
+let _stopMusic = null;
+let audioContext = null;
 
-function startMusic() {
-    if (stopMusic) {
-	stopMusic();
-	stopMusic = null;
+export function stopMusic() {
+    if (_stopMusic) {
+	_stopMusic();
+	_stopMusic = null;
     }
-    if (sampleRate !== lastSampleRate) {
-	lastSampleRate = sampleRate;
+}
+
+export async function startMusic() {
+    stopMusic();
+
+    const sampleRateEl = document.getElementById("playback-hz");
+    const wasmBinary = await fetchWASMBinary('src/html/js/synth.wasm');
+    var sampleRate = sampleRateEl.value - 0;
+    if (sampleRate == 0) {
+	sampleRate = 44100;
+    }
+
+    if (sampleRate !== window.lastSampleRate) {
+	window.lastSampleRate = sampleRate;
 	audioContext = new AudioContext({sampleRate});
     } else {
 	audioContext = audioContext ?? new AudioContext({sampleRate});
     }
     
-    context.audioWorklet.addModule('src/html/js/wasm-audio-worklet.js').then(() => {
-	let node = new ZigSynthWorkletNode(context);
+    audioContext.audioWorklet.addModule('src/html/js/wasm-audio-worklet.js').then(() => {
+	let node = new ZigSynthWorkletNode(audioContext);
 	node.port.onmessage = (event) => {
-	    console.log(event.data);
+	    if (event.data == "ready") {
+		stopMusic();
+		node.connect(audioContext.destination);
+		_stopMusic = node.disconnect();
+	    }
 	};
 
 	node.port.postMessage('from browser');
-	
-	node.connect(audioContext.destination);
-
-	stopMusic = node.disconnect();
+	node.port.postMessage({wasmBinary: wasmBinary});
     });
 }
+
+window.startMusic = startMusic;
+window.stopMusic = stopMusic;

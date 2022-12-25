@@ -14,9 +14,8 @@ export function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, no
     }
 }
 
-export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, secondsLength, waves) {
-    let allocatorIndex=0;
-
+export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, samplesToFill, waves, bufferToFill, songIndex, allocatorStart) {
+    let allocatorIndex = allocatorStart ?? 0;
     let io_previous_note_amplitude = new Uint8Array(memory.buffer, allocatorIndex, 1);
     io_previous_note_amplitude[0] = 7;
     allocatorIndex += 1;	
@@ -29,9 +28,11 @@ export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, no
     [allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
     let inputWaves;
     [allocatorIndex, inputWaves] = u8ArrayPopulate(memory.buffer, allocatorIndex, waves);
-    const u8Array = new Uint8Array(memory.buffer, allocatorIndex, sampleRate * secondsLength);
-    allocatorIndex += u8Array.length;
 
+    const u8Array = bufferToFill ?? new Uint8Array(memory.buffer, allocatorIndex, samplesToFill);
+    if (!bufferToFill) {
+	allocatorIndex += u8Array.length;
+    }
 
     // create the sound
     sfxBuffer(
@@ -42,6 +43,7 @@ export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, no
 	inputWaves.byteOffset, inputWaves.length,
 	io_previous_note_amplitude.byteOffset,
 	io_note_period.byteOffset,
+	songIndex ?? 0,
     );
 
     return {sample_buffer: u8Array, io_previous_note_amplitude, io_note_period, allocatorIndex};

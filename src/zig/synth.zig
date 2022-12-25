@@ -98,6 +98,7 @@ export fn sfxBuffer(
     in_noteWaveFormsLength: usize,
     io_previous_note_amplitude: ?*u8,
     io_note_period: ?*u8,
+    in_songIndex: usize,
 ) void {
     const sample_array = out_sampleArrayPointer[0..out_sampleArrayLength];
 
@@ -130,8 +131,8 @@ export fn sfxBuffer(
     }
 
     // index into the chosenSong
-    var song_index: usize = 0;
-    var wave_index: usize = 0;
+    var song_index: usize = in_songIndex % chosenSong.len;
+    var wave_index: usize = in_songIndex % noteWaveForms.len;
     var note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
     // safety in case bad value
     note_period = note_period % @intCast(u8, note.waveform.len);
@@ -273,9 +274,12 @@ fn sfxBufferPlayNoteUntilIndex(sample_index_start: usize, sample_index_iter_end:
 /// Converts unsigned 8 bit wave data to float 32 wave data.
 /// 8 bit is 0-256
 /// float 32 is -1.0 to 1.0
-export fn u8ArrayToF32Array(in_u8Array: [*]const u8, in_u8ArrayLength: usize, out_f32Array: [*]f32, out_f32ArrayLength: usize) void {
+///
+/// returns number of copied elements
+export fn u8ArrayToF32Array(in_u8Array: [*]const u8, in_u8ArrayLength: usize, out_f32Array: [*]f32, out_f32ArrayLength: usize) usize {
     const size = @min(in_u8ArrayLength, out_f32ArrayLength);
     for (in_u8Array[0..size]) |b, i| out_f32Array[i] = @intToFloat(f32, b) / 128.0 - 1;
+    return size;
 }
 
 test "print assumptions" {
