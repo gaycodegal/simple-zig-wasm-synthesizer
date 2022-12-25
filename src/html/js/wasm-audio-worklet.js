@@ -70,7 +70,7 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 	return this.u8ArrayToF32Array(
 	    this.mainBuffer.byteOffset + this.indexMainBuffer,
 	    Math.max(this.mainBuffer.length - this.indexMainBuffer, 0),
-	    this.floatCopyBuffer.byteOffset + this.indexFloatCopyBuffer,
+	    this.floatCopyBuffer.byteOffset + this.indexFloatCopyBuffer * 4,
 	    Math.max(this.floatCopyBuffer.length - this.indexFloatCopyBuffer, 0));
     }
 
@@ -102,7 +102,6 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 		this.indexMainBuffer = 0;
 	    }
 	}
-	//console.log(copied, this.floatCopyBuffer);
 
 	for (let channel = 0; channel < outputs.length; channel++) {
 	    const outputChannel = outputs[channel];
