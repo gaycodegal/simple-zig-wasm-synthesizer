@@ -14,14 +14,14 @@ export function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, no
     }
 }
 
-export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, samplesToFill, waves, bufferToFill, songIndex, allocatorStart) {
+export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, samplesToFill, waves, bufferToFill, songIndex, allocatorStart, prev_note_amplitude, prev_note_period) {
     let allocatorIndex = allocatorStart ?? 0;
     let io_previous_note_amplitude = new Uint8Array(memory.buffer, allocatorIndex, 1);
-    io_previous_note_amplitude[0] = 7;
+    io_previous_note_amplitude[0] = prev_note_amplitude ?? 7;
     allocatorIndex += 1;	
 
     let io_note_period = new Uint8Array(memory.buffer, allocatorIndex, 1);
-    io_note_period[0] = 0;
+    io_note_period[0] = prev_note_period ?? 0;
     allocatorIndex += 1;
 
     let inputSong;
