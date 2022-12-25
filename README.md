@@ -3,6 +3,8 @@
 The intention of this project is to create a small (in code size) synthesizer
 to make bit tune sound effect / music for online games. This project is demonstrating compiling a polyphonic synthesizer in Zig and playing it from the web.
 
+It is currently monophonic, but mostly usable.
+
 ## Rationale
 
 - Games can easily use megabytes for music even if the rest of the game is very small due to pixel art or being text based.
@@ -14,18 +16,21 @@ Could I have used wave files for sfx and xm for music? Definitely, but I didn't 
 ## Progress
 
 In its current state, it could be used to play short sound effects for
-online games. The code size is at last check ~5kb in js + wasm, or 2.6kb zipped. The audio it generates is 45kb/s 8bit audio.
+online games. The code size is at last check ~15.9kb in js + wasm (without shortening variable names etc), or 7.4kb zipped. The audio it generates is 45kb/s 8bit audio.
+
+The wasm binary itself is only 2kb.
 
 - Play different notes from a note bank
 - Play different waveforms from a waveform bank
+- Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
 
 ### Soon
 
-- Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
+- message passing setup for the music player to allow for dynamic choice of song
 
 ### Later
 
-- configure max amplitude (probably in the f32 converter)
+- configure max amplitude (probably in the f32 converter, for polyphony)
 - Make music be able to use notes and sfx alike to play music
 - Make an optional file format for the music
 
