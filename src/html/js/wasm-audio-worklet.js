@@ -44,7 +44,8 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 
     initMainBuffer(samplesRequired, sfx) {
 	samplesRequired = this.sampleAlign(samplesRequired, sfx);
-	let allocatorIndex = 0;
+	// 0 reserved for null
+	let allocatorIndex = 1;
 	this.mainBuffer = new Uint8Array(this.memory.buffer, allocatorIndex, samplesRequired);
     }
 

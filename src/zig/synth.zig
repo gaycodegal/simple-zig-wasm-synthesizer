@@ -87,30 +87,36 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 /// after the end of this sound effect will be set to 127 or "silence"
 ///
 /// the out_sampleArray is a 8 bit waveform buffer
+///
+/// if out_sampleArrayPointer, in_songNotesPointer, in_noteWaveFormsPointer is null, will do nothing
+/// if out_sampleArrayLength, in_songNotesLength, in_noteWaveFormsLength, sampleRate, noteLength is 0, will do nothing
 export fn sfxBuffer(
-    out_sampleArrayPointer: [*]u8,
-    out_sampleArrayLength: usize,
-    sampleRate: u32,
-    in_songNotesPointer: [*]u8,
+    in_songNotesPointer: ?[*]u8,
     in_songNotesLength: usize,
-    noteLength: u32,
-    in_noteWaveFormsPointer: [*]u8,
+    in_noteWaveFormsPointer: ?[*]u8,
     in_noteWaveFormsLength: usize,
-    io_previous_note_amplitude: ?*u8,
-    io_note_period: ?*u8,
+    out_sampleArrayPointer: ?[*]u8,
+    out_sampleArrayLength: usize,
+    io_previous_note_amplitude: ?*u8, // nullable
+    io_note_period: ?*u8, // nullable
+    sampleRate: u32,
+    noteLength: u32,
     in_songIndex: usize,
 ) void {
-    const sample_array = out_sampleArrayPointer[0..out_sampleArrayLength];
-
-    var chosenSong = in_songNotesPointer[0..in_songNotesLength];
-    const noteWaveForms = in_noteWaveFormsPointer[0..in_noteWaveFormsLength];
+    // initial initialization and guard statements to ensure contracts are met
+    if (in_noteWaveFormsLength == 0 or in_songNotesLength == 0 or out_sampleArrayLength == 0 or sampleRate == 0 or noteLength == 0 or out_sampleArrayPointer == null or in_songNotesPointer == null or in_noteWaveFormsPointer == null) {
+        return;
+    }
+    const sample_array = (out_sampleArrayPointer orelse return)[0..out_sampleArrayLength];
+    const chosenSong = (in_songNotesPointer orelse return)[0..in_songNotesLength];
+    const noteWaveForms = (in_noteWaveFormsPointer orelse return)[0..in_noteWaveFormsLength];
 
     // safety check in case bad value
     var previous_note_amplitude: i32 = 7;
-
     if (io_previous_note_amplitude) |value| {
         previous_note_amplitude = value.* % 16;
     }
+
     // notes have waveforms, which are all 32 in length.
     // as we're writing the note to the output sample buffer
     // we need to move from index to index inside the note's
@@ -129,7 +135,6 @@ export fn sfxBuffer(
     if (io_note_period) |value| {
         note_period = value.*;
     }
-
     // index into the chosenSong
     var song_index: usize = in_songIndex % chosenSong.len;
     var wave_index: usize = in_songIndex % noteWaveForms.len;
@@ -193,6 +198,7 @@ export fn sfxBuffer(
         }
     }
 
+    // write out values that will be needed as inputs next cycle of this function.
     if (io_previous_note_amplitude) |value| {
         value.* = @intCast(u8, previous_note_amplitude);
     }
@@ -276,10 +282,18 @@ fn sfxBufferPlayNoteUntilIndex(sample_index_start: usize, sample_index_iter_end:
 /// float 32 is -1.0 to 1.0
 ///
 /// returns number of copied elements
-export fn u8ArrayToF32Array(in_u8Array: [*]const u8, in_u8ArrayLength: usize, out_f32Array: [*]f32, out_f32ArrayLength: usize) usize {
+///
+/// if null or length < 0, returns 0 and does nothing
+export fn u8ArrayToF32Array(in_u8Array: ?[*]const u8, in_u8ArrayLength: isize, out_f32Array: ?[*]f32, out_f32ArrayLength: isize) usize {
+    const in_u8Array_nonnull = in_u8Array orelse return 0;
+    const out_f32Array_nonnull = out_f32Array orelse return 0;
     const size = @min(in_u8ArrayLength, out_f32ArrayLength);
-    for (in_u8Array[0..size]) |b, i| out_f32Array[i] = @intToFloat(f32, b) / 128.0 - 1;
-    return size;
+    if (size < 0) {
+        return 0;
+    }
+    const size_unsigned = @intCast(usize, size);
+    for (in_u8Array_nonnull[0..size_unsigned]) |b, i| out_f32Array_nonnull[i] = @intToFloat(f32, b) / 128.0 - 1;
+    return size_unsigned;
 }
 
 test "print assumptions" {
