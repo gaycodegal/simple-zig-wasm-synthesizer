@@ -316,7 +316,7 @@ export fn u8ArrayToF32Array(in_u8Array: ?[*]const u8, in_u8ArrayLength: isize, o
 }
 
 test "print assumptions" {
-    const std = @import("std");
-    const stdout = std.io.getStdOut().writer();
+    const stdtest = @import("std");
+    const stdout = stdtest.io.getStdOut().writer();
     try stdout.print("Hello, {d}!\n", .{NoteHz.len});
 }

@@ -11,7 +11,7 @@ export function synthModule (optionalWasmBinary){
 		    if (decoder) {
 			console.log(decoder.decode(new Uint8Array(mod.memory.buffer, a, b)));
 		    } else {
-			console.log(new Uint8Array(mod.memory.buffer, a, b));
+			console.log(Array.from(new Uint8Array(mod.memory.buffer, a, b)).map(x=>String.fromCharCode(x)).join(''));
 		    }
 		    
 		}

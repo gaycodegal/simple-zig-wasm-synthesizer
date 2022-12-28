@@ -54,7 +54,7 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     }
 
     initFloatCopyBuffer(samplesRequired){
-	let allocatorIndex = this.mainBuffer.length;
+	let allocatorIndex = this.mainBuffer.byteOffset + this.mainBuffer.length;
 
 	allocatorIndex = allocateTo(allocatorIndex, 4);
 	this.floatCopyBuffer = new Float32Array(this.memory.buffer, allocatorIndex, samplesRequired);
@@ -72,9 +72,9 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     copyBufferToFloat() {
 	return this.u8ArrayToF32Array(
 	    this.mainBuffer.byteOffset + this.indexMainBuffer,
-	    Math.max(this.mainBuffer.length - this.indexMainBuffer, 0),
+	    this.mainBuffer.length - this.indexMainBuffer,
 	    this.floatCopyBuffer.byteOffset + this.indexFloatCopyBuffer * 4,
-	    Math.max(this.floatCopyBuffer.length - this.indexFloatCopyBuffer, 0));
+	    this.floatCopyBuffer.length - this.indexFloatCopyBuffer);
     }
 
     process(inputs, outputs, parameters) {

@@ -1,3 +1,15 @@
 https://wasmbyexample.dev/examples/reading-and-writing-audio/reading-and-writing-audio.assemblyscript.en-us.html
 https://web.dev/webaudio-intro/
 
+#+begin_example zig
+
+const std = @import("std");
+var buf: [100]u8 = undefined;
+var fba = std.heap.FixedBufferAllocator.init(&buf);
+const allocator = std.heap.FixedBufferAllocator.allocator(&fba);
+
+const string = std.fmt.allocPrintZ(allocator, "hello {d:.1}", .{wave_as_u4 * u4Tou8WaveTransformConstant}) catch unreachable;
+print_(string);
+allocator.free(string);
+
+#+end_example
