@@ -15,8 +15,8 @@ export async function main(){
 
        should be able to play multiple at once
     */
-    function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves) {
-	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
+    function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves, volumes) {
+	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes);
 	
 	if (sampleRate !== window.lastSampleRate) {
 	    window.lastSampleRate = sampleRate;
@@ -25,7 +25,7 @@ export async function main(){
 	    audioContext = audioContext ?? new AudioContext({sampleRate});
 	}
 
-	let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, audioContext.sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves);
+	let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, audioContext.sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves, volumes);
 
 	allocatorIndex = allocateTo(allocatorIndex, 4);
 	const f32Array = new Float32Array(memory.buffer, allocatorIndex, audioContext.sampleRate * secondsLength);
@@ -59,12 +59,12 @@ export async function main(){
     parseConstants(playSoundEffect);
 }
 
-export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves){
+export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves, volumes){
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer} = synthWASMModule;
-    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves);
+    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes);
     const hz = sampleRate;
-    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves);
+    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves, volumes);
 
     const WaveFile = wavefile.WaveFile;
     const wav = new WaveFile();

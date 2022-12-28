@@ -31,6 +31,11 @@
 	  <p id="waves-to-play-describe">comma separated 8 bit note indexes, can be between 0 and 15</p>
 	</li>
 	<li>
+	  <label for="volumes-to-play">Round robin note volumes</label>
+	  <input id="volumes-to-play" aria-describedby="volumes-to-play-describe" pattern="(\d+\s*,\s*)+" value="7, 7, 4, 4, 1, 1"></input>
+	  <p id="volumes-to-play-describe">comma separated 3 bit volumes, can be between 0 and 7</p>
+	</li>
+	<li>
 	  <label for="note-length">Note length in samples (whole number).</label>
 	  <input id="note-length" type="number" value="5000"></input>
 	</li>

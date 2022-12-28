@@ -23,13 +23,14 @@ const Note = struct {
     waveform: *[32]u4,
     hz: u16,
     note: ?u8,
+    volume: u8,
 };
 
 /// get the note to play at a position of the song, or "silence"
 /// fake note otherwise.
 ///
 /// a silent note has .note set to null
-fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8) Note {
+fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8, volume_pos: usize, volumes: []u8) Note {
     // if greater than song length, or bad note at index,
     // fake frequency is used, and note is set to null
     var hz: u16 = 256;
@@ -48,17 +49,23 @@ fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8) Note {
         const bank_pos = song_waves[wave_pos];
         if (bank_pos < waveforms.WaveBank.len) {
             waveform = waveforms.WaveBank[bank_pos];
-        } else if (wave_pos == 0) {
-            print_("second fail");
         }
-    } else if (wave_pos == 0) {
-        print_("first fail");
+    }
+
+    var volume: u8 = 1;
+    if (volume_pos < volumes.len) {
+        volume = volumes[volume_pos];
+        if (volume >= 8) {
+            volume = 0;
+        }
+        volume += 1;
     }
 
     return Note{
         .waveform = waveform,
         .hz = hz,
         .note = note,
+        .volume = volume,
     };
 }
 
@@ -95,6 +102,8 @@ export fn sfxBuffer(
     in_songNotesLength: usize,
     in_noteWaveFormsPointer: ?[*]u8,
     in_noteWaveFormsLength: usize,
+    in_noteVolumesPointer: ?[*]u8,
+    in_noteVolumesLength: usize,
     out_sampleArrayPointer: ?[*]u8,
     out_sampleArrayLength: usize,
     io_previous_note_amplitude: ?*u8, // nullable
@@ -104,18 +113,19 @@ export fn sfxBuffer(
     in_songIndex: usize,
 ) void {
     // initial initialization and guard statements to ensure contracts are met
-    if (in_noteWaveFormsLength == 0 or in_songNotesLength == 0 or out_sampleArrayLength == 0 or sampleRate == 0 or noteLength == 0 or out_sampleArrayPointer == null or in_songNotesPointer == null or in_noteWaveFormsPointer == null) {
+    if (in_noteWaveFormsLength == 0 or in_songNotesLength == 0 or in_noteVolumesLength == 0 or out_sampleArrayLength == 0 or sampleRate == 0 or noteLength == 0 or out_sampleArrayPointer == null or in_songNotesPointer == null or in_noteWaveFormsPointer == null or in_noteVolumesPointer == null) {
         return;
     }
     // convert data to slices for ease of use / test-mode assertions
     const sample_array = (out_sampleArrayPointer orelse return)[0..out_sampleArrayLength];
     const chosenSong = (in_songNotesPointer orelse return)[0..in_songNotesLength];
     const noteWaveForms = (in_noteWaveFormsPointer orelse return)[0..in_noteWaveFormsLength];
+    const note_volumes = (in_noteVolumesPointer orelse return)[0..in_noteVolumesLength];
 
     // safety check in case bad value
-    var previous_note_amplitude: i32 = 7;
+    var previous_note_amplitude: i32 = 127;
     if (io_previous_note_amplitude) |value| {
-        previous_note_amplitude = value.* % 16;
+        previous_note_amplitude = value.*;
     }
 
     // notes have waveforms, which are all 32 in length.
@@ -139,7 +149,8 @@ export fn sfxBuffer(
     // index into the chosenSong
     var song_index: usize = in_songIndex % chosenSong.len;
     var wave_index: usize = in_songIndex % noteWaveForms.len;
-    var note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
+    var volume_index: usize = in_songIndex % note_volumes.len;
+    var note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
     // safety in case bad value
     note_period = note_period % @intCast(u8, note.waveform.len);
     var samples_per_wave = samplesPerWave(note, sampleRate);
@@ -181,19 +192,11 @@ export fn sfxBuffer(
         }
 
         // play the next note
-        song_index += 1;
-        // loop the song. could have used modulo, but may add additional
-        // logic later
-        if (song_index >= chosenSong.len) {
-            song_index = 0;
-        }
-        wave_index += 1;
-        // loop the waveforms. could have used modulo, but may
-        // add additional logic later
-        if (wave_index >= noteWaveForms.len) {
-            wave_index = 0;
-        }
-        note = getNote(song_index, chosenSong, wave_index, noteWaveForms);
+        song_index = (song_index + 1) % chosenSong.len;
+        wave_index = (wave_index + 1) % noteWaveForms.len;
+        volume_index = (volume_index + 1) % note_volumes.len;
+
+        note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
         samples_per_wave = samplesPerWave(note, sampleRate);
     }
 
@@ -257,18 +260,21 @@ fn sfxBufferPlayNoteUntilIndex(
             // those samples, one slice is the number of samples from
             // one waveform index to the next.
             var k: i32 = 0;
-            const note_amplitude: i32 = note.waveform[note_period];
+            // waves are u4 and we must convert that to our
+            // own output format, u8.
+            //
+            // we could correct for the transformation from
+            // u4 to u8 by multiplying by 17, but instead,
+            // we multiply by volume (1 - 8)
+            // and center the note around 127. helps with
+            // polyphony
+            const note_u4_amp = note.waveform[note_period];
+            // add in volume
+            const note_amplitude: i32 = 127 + (note.volume >> 1) - (note.volume * 8) + note_u4_amp * note.volume;
             while (sample_index < sample_index_iter_end and k < samples_per_note_slice) : (sample_index += 1) {
                 k += 1;
-                // waves are u4 and we must convert that to our
-                // own output format, u8.
-                //
-                // currently we fill out the full 0-255 space.
-                // this formula is part linear interpolation, and
-                // part correcting for the transition from u4 to u8
-                const wave_as_u4 = @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice);
-
-                out_sampleArray[sample_index] = @floatToInt(u8, wave_as_u4 * u4Tou8WaveTransformConstant);
+                // linear interpolate between two different u8 values
+                out_sampleArray[sample_index] = @floatToInt(u8, @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice));
             }
 
             // increment note period so we play the next part of the waveform

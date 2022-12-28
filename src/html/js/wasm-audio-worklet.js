@@ -62,7 +62,7 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 
     fillBuffer (buffer, sfx) {
 	const samplesRequired = buffer.length;
-	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, sfx.sampleRate, sfx.songNotes, sfx.noteLength, samplesRequired, sfx.waves, buffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period);
+	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, sfx.sampleRate, sfx.songNotes, sfx.noteLength, samplesRequired, sfx.waves, sfx.volumes, buffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period);
 	this.last_note_amplitude = result.io_previous_note_amplitude;
 	this.last_note_period = result.io_note_period;
 

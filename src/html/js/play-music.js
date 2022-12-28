@@ -27,7 +27,7 @@ export function stopMusic() {
 export async function startMusic() {
     parseConstants(music);
 }
-export async function music(sampleRate, songNotes, noteLength, secondsLength, waves) {
+export async function music(sampleRate, songNotes, noteLength, secondsLength, waves, volumes) {
     sampleRate = sampleRate ?? 44100;
     stopMusic();
 
@@ -54,11 +54,11 @@ export async function music(sampleRate, songNotes, noteLength, secondsLength, wa
 	};
 
 	node.port.postMessage({wasmBinary: wasmBinary});
-	node.port.postMessage(musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves));
+	node.port.postMessage(musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves, volumes));
     });
 }
 
-function musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves){
+function musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves, volumes){
     return {
 	type: 'music',
 	sfx:[{
@@ -66,6 +66,7 @@ function musicMessage(sampleRate, songNotes, noteLength, secondsLength, waves){
 	    songNotes,
 	    noteLength,
 	    waves,
+	    volumes,
 	}],
     };
 }

@@ -24,10 +24,11 @@ The wasm binary itself is only 2kb.
 - Play different waveforms from a waveform bank
 - Music player which doesn't suffer the length limitations of audiobuffer, instead using AudioWorklet
 - Message passing setup for the music player to allow for dynamic choice of song
+- Volume control via volume list
+    - technically, because volume now allows you to play less than at maximum amplitude, you can now do polyphony by just playing multiple things at once with low volume.
 
 ### Soon
 
-- Volume control via volume list
 - 4 track polyphony / maybe 8 track 4 volume, 4 sfx
 
 ### Later

@@ -13,12 +13,14 @@ async function __parseConstants(callback){
     const sampleRateEl = document.getElementById("playback-hz");
     const songNotesEl = document.getElementById("notes-to-play");
     const wavesEl = document.getElementById("waves-to-play");
+    const volumesEl = document.getElementById("volumes-to-play");
     const noteLengthEl = document.getElementById("note-length");
     const secondsLengthEl = document.getElementById("seconds-length");
 
     var sampleRate = sampleRateEl.value - 0;
     const songNotes = songNotesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
     const waves = wavesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
+    const volumes = volumesEl.value.split(',').map(x=>parseInt(x)).filter(x=>!isNaN(x));
     const noteLength = noteLengthEl.value - 0;
     const secondsLength = secondsLengthEl.value - 0;
     if (sampleRate == 0) {
@@ -30,7 +32,7 @@ async function __parseConstants(callback){
     if (songNotes.length == 0) {
 	throw new Error("must include notes to play");
     }
-    await callback(sampleRate, songNotes, noteLength, secondsLength, waves);    
+    await callback(sampleRate, songNotes, noteLength, secondsLength, waves, volumes);    
 }
 
 export async function parseConstants(callback){
@@ -38,5 +40,6 @@ export async function parseConstants(callback){
 	await __parseConstants(callback);
     } catch(e){
 	printError(`${e.name} ${e.message}`);
+	console.log(e.stack);
     }
 }
