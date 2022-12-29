@@ -80,7 +80,7 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
 }
 
 // const std = @import("std");
-// var buf: [100]u8 = undefined;
+// var buf: [1000]u8 = undefined;
 // var fba = std.heap.FixedBufferAllocator.init(&buf);
 // const allocator = std.heap.FixedBufferAllocator.allocator(&fba);
 
@@ -108,10 +108,13 @@ export fn sfxBuffer(
     out_sampleArrayLength: usize,
     io_previous_note_amplitude: ?*u8, // nullable
     io_note_period: ?*u8, // nullable
+    io_note_partial_completion: ?*u32, // nullable
+    io_wave_segment_partial_completion: ?*i32, // nullable
     sampleRate: u32,
     noteLength: u32,
     in_songIndex: usize,
 ) void {
+
     // initial initialization and guard statements to ensure contracts are met
     if (in_noteWaveFormsLength == 0 or in_songNotesLength == 0 or in_noteVolumesLength == 0 or out_sampleArrayLength == 0 or sampleRate == 0 or noteLength == 0 or out_sampleArrayPointer == null or in_songNotesPointer == null or in_noteWaveFormsPointer == null or in_noteVolumesPointer == null) {
         return;
@@ -157,11 +160,25 @@ export fn sfxBuffer(
 
     // index into the output sample_array
     var sample_index: usize = 0;
+    // for keeping track of if we've played the whole note we set
+    // out to play
+    var last_start: usize = 0;
+    // for resuming mid note
+    var note_partial_completion: u32 = 0;
+    if (io_note_partial_completion) |value| {
+        note_partial_completion = value.*;
+    }
+
+    // for resuming mid wave segment
+    var wave_segment_partial_completion: i32 = 0;
+    if (io_wave_segment_partial_completion) |value| {
+        wave_segment_partial_completion = value.*;
+    }
 
     // each loop of this array should write one note's worth of samples
     // to the sample_array or an equivalent amount of silence
     while (sample_index < sample_array.len) {
-
+        last_start = sample_index;
         // we want to write out the next full note to the sample_array,
         // but can't overshoot the length.
         // notes are noteLength long in samples
@@ -172,7 +189,7 @@ export fn sfxBuffer(
         // you shouldn't have to, as you pass in both out_sampleArrayLength,
         // and noteLength, so just make sure the former is divisible
         // evenly by the latter
-        const sample_index_iter_end = @min(sample_array.len, sample_index + noteLength);
+        const sample_index_iter_end = @min(sample_array.len, sample_index + noteLength - note_partial_completion);
 
         if (note.note == null) {
             // write silence to the buffer for a null note
@@ -185,19 +202,26 @@ export fn sfxBuffer(
             // and save information like note_period and
             // previous_note_amplitude, which are required to smoothly
             // transition into the next note.
-            const updates = sfxBufferPlayNoteUntilIndex(sample_index, sample_index_iter_end, sample_array, samples_per_wave, note, note_period, previous_note_amplitude);
+            const updates = sfxBufferPlayNoteUntilIndex(sample_index, sample_index_iter_end, sample_array, samples_per_wave, note, note_period, previous_note_amplitude, note_partial_completion, wave_segment_partial_completion);
             sample_index = updates.sample_index;
             note_period = updates.note_period;
             previous_note_amplitude = updates.previous_note_amplitude;
+            wave_segment_partial_completion = updates.wave_segment_partial_completion;
         }
 
-        // play the next note
-        song_index = (song_index + 1) % chosenSong.len;
-        wave_index = (wave_index + 1) % noteWaveForms.len;
-        volume_index = (volume_index + 1) % note_volumes.len;
+        // played to end of range
+        if (last_start + noteLength == sample_index) {
+            // play the next note
+            song_index = (song_index + 1) % chosenSong.len;
+            wave_index = (wave_index + 1) % noteWaveForms.len;
+            volume_index = (volume_index + 1) % note_volumes.len;
 
-        note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
-        samples_per_wave = samplesPerWave(note, sampleRate);
+            note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
+            samples_per_wave = samplesPerWave(note, sampleRate);
+
+            // completed note
+            note_partial_completion = 0;
+        }
     }
 
     // write out values that will be needed as inputs next cycle
@@ -208,6 +232,18 @@ export fn sfxBuffer(
     if (io_note_period) |value| {
         value.* = note_period;
     }
+
+    // did not finish playing note
+    if (last_start + noteLength != sample_index) {
+        if (io_note_partial_completion) |value| {
+            value.* = sample_index - last_start;
+        }
+    }
+
+    // maybe did not finish playing wave segment
+    if (io_wave_segment_partial_completion) |value| {
+        value.* = wave_segment_partial_completion;
+    }
 }
 
 /// since sfxBufferPlayNoteUntilIndex is meant to be inline
@@ -216,6 +252,8 @@ const sfxBufferPlayNoteUntilIndexValues = struct {
     sample_index: usize,
     note_period: u8,
     previous_note_amplitude: i32,
+    // for resuming mid wave
+    wave_segment_partial_completion: i32,
 };
 
 /// write a single note's waveform to the output out_sampleArray buffer
@@ -228,12 +266,20 @@ fn sfxBufferPlayNoteUntilIndex(
     note: Note,
     note_period_start: u8,
     previous_note_amplitude_start: i32,
+    note_partial_completion: u32,
+    wave_segment_partial_completion_start: i32,
 ) sfxBufferPlayNoteUntilIndexValues {
     // function inputs are const, so create shadow versions of data that
     // needs to change during this function
     var sample_index = sample_index_start;
     var note_period = note_period_start;
     var previous_note_amplitude = previous_note_amplitude_start;
+
+    var wave_partial_completion: i32 = @intCast(i32, note_partial_completion % samples_per_wave);
+
+    const samples_per_wave_i32 = @intCast(i32, samples_per_wave);
+    var samples_left_to_do: i32 = samples_per_wave_i32 - wave_partial_completion;
+    var wave_segment_partial_completion = wave_segment_partial_completion_start;
 
     // the outer loop ensures the inner loop has done enough iterations
     // to fill out the whole note length
@@ -247,19 +293,19 @@ fn sfxBufferPlayNoteUntilIndex(
         //
         // if we did not do this, notes could only be evenly divisible
         // frequencies
-        var samples_left_to_do: i32 = @intCast(i32, samples_per_wave);
+
         while (sample_index < sample_index_iter_end and samples_left_to_do > 0) {
             // bookkeeping to ensure error correction for uneven divisibility
             // is taken into account
-            const samples_per_note_slice: i32 = @divFloor(samples_left_to_do, @intCast(i32, note.waveform.len - note_period));
-            samples_left_to_do -= samples_per_note_slice;
+            const samples_per_note_slice: i32 = @divFloor(samples_left_to_do + wave_segment_partial_completion, @intCast(i32, note.waveform.len - note_period));
+            samples_left_to_do -= samples_per_note_slice - wave_segment_partial_completion;
 
             // write one slice of the note to the sample_array
             // what is a note slice? well since notes have 32 samples
             // in their wave form, and we want to evenly interpolate between
             // those samples, one slice is the number of samples from
             // one waveform index to the next.
-            var k: i32 = 0;
+            var k: i32 = wave_segment_partial_completion;
             // waves are u4 and we must convert that to our
             // own output format, u8.
             //
@@ -277,19 +323,26 @@ fn sfxBufferPlayNoteUntilIndex(
                 out_sampleArray[sample_index] = @floatToInt(u8, @intToFloat(f32, previous_note_amplitude) + @intToFloat(f32, (note_amplitude - previous_note_amplitude) * k) / @intToFloat(f32, samples_per_note_slice));
             }
 
-            // increment note period so we play the next part of the waveform
-            // on the next pass
-            note_period = (note_period + 1) % 32;
-            // keep track of the previous amplitude, because
-            // we need to interpolate from it to the next note
-            // on the next round this code is run.
-            previous_note_amplitude = note_amplitude;
+            if (k == samples_per_note_slice) {
+                wave_segment_partial_completion = 0;
+
+                // increment note period so we play the next part of the waveform
+                // on the next pass
+                note_period = (note_period + 1) % 32;
+                // keep track of the previous amplitude, because
+                // we need to interpolate from it to the next note
+                // on the next round this code is run.
+                previous_note_amplitude = note_amplitude;
+            }
         }
+
+        samples_left_to_do = samples_per_wave_i32;
     }
     return .{
         .sample_index = sample_index,
         .note_period = note_period,
         .previous_note_amplitude = previous_note_amplitude,
+        .wave_segment_partial_completion = wave_segment_partial_completion,
     };
 }
 

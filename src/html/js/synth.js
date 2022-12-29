@@ -14,7 +14,7 @@ export function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, no
     }
 }
 
-export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, samplesToFill, waves, volumes, bufferToFill, songIndex, allocatorStart, prev_note_amplitude, prev_note_period) {
+export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, samplesToFill, waves, volumes, bufferToFill, songIndex, allocatorStart, prev_note_amplitude, prev_note_period, note_partial, segment_partial) {
     let allocatorIndex = allocatorStart ?? 1;
     let io_previous_note_amplitude = new Uint8Array(memory.buffer, allocatorIndex, 1);
     io_previous_note_amplitude[0] = prev_note_amplitude ?? 127;
@@ -24,6 +24,16 @@ export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, no
     io_note_period[0] = prev_note_period ?? 0;
     allocatorIndex += 1;
 
+    allocatorIndex = allocateTo(allocatorIndex, 4);
+    let io_note_partial = new Uint32Array(memory.buffer, allocatorIndex, 4);
+    io_note_partial[0] = note_partial ?? 0;
+    allocatorIndex += 4;
+
+    allocatorIndex = allocateTo(allocatorIndex, 4);
+    let io_segment_partial = new Int32Array(memory.buffer, allocatorIndex, 4);
+    io_segment_partial[0] = segment_partial ?? 0;
+    allocatorIndex += 4;
+
     let inputSong;
     [allocatorIndex, inputSong] = u8ArrayPopulate(memory.buffer, allocatorIndex, songNotes);
     let inputWaves;
@@ -31,6 +41,7 @@ export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, no
     let inputVolumes;
     [allocatorIndex, inputVolumes] = u8ArrayPopulate(memory.buffer, allocatorIndex, volumes);
 
+    
     const u8Array = bufferToFill ?? new Uint8Array(memory.buffer, allocatorIndex, samplesToFill);
     if (!bufferToFill) {
 	allocatorIndex += u8Array.length;
@@ -44,12 +55,14 @@ export function createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, no
 	u8Array.byteOffset, u8Array.length,
 	io_previous_note_amplitude.byteOffset,
 	io_note_period.byteOffset,
+	io_note_partial.byteOffset,
+	io_segment_partial.byteOffset,
 	sampleRate,
 	noteLength,
 	songIndex ?? 0,
     );
 
-    return {sample_buffer: u8Array, io_previous_note_amplitude, io_note_period, allocatorIndex};
+    return {sample_buffer: u8Array, io_previous_note_amplitude, io_note_period, io_note_partial, io_segment_partial, allocatorIndex};
 }
 
 export function allocateTo(alloced, size) {
