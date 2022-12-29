@@ -73,7 +73,8 @@ export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLen
     io_segment_partial = [0];
     console.log(io_previous_note_amplitude, io_note_period, io_note_partial, io_segment_partial);
     for (var i = 0; i < sampleRate * secondsLength; i += buffLen) {
-	let r = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, buffLen, waves, volumes, null, i, 1, io_previous_note_amplitude[0], io_note_period[0], io_note_partial[0], io_segment_partial[0]);
+	const songIndex = ((i / noteLength) | 0);
+	let r = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, buffLen, waves, volumes, null, songIndex, 1, io_previous_note_amplitude[0], io_note_period[0], io_note_partial[0], io_segment_partial[0]);
 	io_previous_note_amplitude = r.io_previous_note_amplitude;
 	io_note_period = r.io_note_period;
 	io_note_partial = r.io_note_partial;
