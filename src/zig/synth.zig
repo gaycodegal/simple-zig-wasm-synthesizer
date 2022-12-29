@@ -79,10 +79,10 @@ fn samplesPerWave(note: Note, sampleRate: u32) u32 {
     }
 }
 
-// const std = @import("std");
-// var buf: [1000]u8 = undefined;
-// var fba = std.heap.FixedBufferAllocator.init(&buf);
-// const allocator = std.heap.FixedBufferAllocator.allocator(&fba);
+const std = @import("std");
+var buf: [1000]u8 = undefined;
+var fba = std.heap.FixedBufferAllocator.init(&buf);
+const allocator = std.heap.FixedBufferAllocator.allocator(&fba);
 
 /// write a sfx defined by the notes of "in_songNotes"
 /// to the output buffer out_sampleArray.
@@ -300,12 +300,18 @@ fn sfxBufferPlayNoteUntilIndex(
             const samples_per_note_slice: i32 = @divFloor(samples_left_to_do + wave_segment_partial_completion, @intCast(i32, note.waveform.len - note_period));
             samples_left_to_do -= samples_per_note_slice - wave_segment_partial_completion;
 
+            var string = std.fmt.allocPrintZ(allocator, "sampling: {d} {d} {d}", .{ samples_left_to_do, samples_per_note_slice, wave_segment_partial_completion }) catch unreachable;
+
             // write one slice of the note to the sample_array
             // what is a note slice? well since notes have 32 samples
             // in their wave form, and we want to evenly interpolate between
             // those samples, one slice is the number of samples from
             // one waveform index to the next.
             var k: i32 = wave_segment_partial_completion;
+            if (k != 0) {
+                print_(string);
+            }
+
             // waves are u4 and we must convert that to our
             // own output format, u8.
             //
@@ -333,7 +339,13 @@ fn sfxBufferPlayNoteUntilIndex(
                 // we need to interpolate from it to the next note
                 // on the next round this code is run.
                 previous_note_amplitude = note_amplitude;
+            } else {
+                print_(string);
+                allocator.free(string);
+                string = std.fmt.allocPrintZ(allocator, "vs sampling: {d} {d} {d}", .{ samples_left_to_do, samples_per_note_slice, k }) catch unreachable;
+                print_(string);
             }
+            allocator.free(string);
         }
 
         samples_left_to_do = samples_per_wave_i32;

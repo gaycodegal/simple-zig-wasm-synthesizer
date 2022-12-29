@@ -64,12 +64,26 @@ export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLen
     const {memory, sfxBuffer} = synthWASMModule;
     growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes);
     const hz = sampleRate;
-    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves, volumes);
-
+    const buffers = [];
+    const buffLen = 3200;
+    let io_previous_note_amplitude, io_note_period, io_note_partial, io_segment_partial;
+    io_previous_note_amplitude = [127];
+    io_note_period = [0];
+    io_note_partial = [0];
+    io_segment_partial = [0];
+    console.log(io_previous_note_amplitude, io_note_period, io_note_partial, io_segment_partial);
+    for (var i = 0; i < sampleRate * secondsLength; i += buffLen) {
+	let r = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, buffLen, waves, volumes, null, i, 1, io_previous_note_amplitude[0], io_note_period[0], io_note_partial[0], io_segment_partial[0]);
+	io_previous_note_amplitude = r.io_previous_note_amplitude;
+	io_note_period = r.io_note_period;
+	io_note_partial = r.io_note_partial;
+	io_segment_partial = r.io_segment_partial;
+	
+	buffers.push(Array.from(r.sample_buffer));
+    }
     const WaveFile = wavefile.WaveFile;
     const wav = new WaveFile();
-
-    wav.fromScratch(1, hz, '8', sample_buffer, {method: "point", LPF: false});
+    wav.fromScratch(1, hz, '8', buffers.flat(), {method: "point", LPF: false});
     download(wav.toDataURI(), "raw_wav_demo.wav");
 
     function download(d, name){
