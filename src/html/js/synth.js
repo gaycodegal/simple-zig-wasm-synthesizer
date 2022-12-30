@@ -1,14 +1,14 @@
-export function memoryNeededForSfxBuffer(sampleRate, songNotes, noteLength, secondsLength, waves, volumes) {
+export function memoryNeededForSfxBuffer(bufferSize, songNotes, noteLength, waves, volumes) {
     const io_period_and_amplitude = 2;
-    const sampleU8 = sampleRate * secondsLength;
-    const sampleF32 = sampleRate * secondsLength * 4;
+    const sampleU8 = bufferSize;
+    const sampleF32 = bufferSize * 4;
 
     return sampleU8 + sampleF32 + songNotes.length + waves.length + volumes.length + io_period_and_amplitude;
 }
 
-export function growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes) {
+export function growMemoryIfNeededForSfxBuffer(memory, bufferSize, songNotes, noteLength, waves, volumes) {
     // the extra 1 is because memory index 0 reserved to mean null
-    const totalNeeded = memoryNeededForSfxBuffer(sampleRate, songNotes, noteLength, secondsLength, waves, volumes) + 1;
+    const totalNeeded = memoryNeededForSfxBuffer(bufferSize, songNotes, noteLength, waves, volumes) + 1;
     if (memory.buffer.byteLength < totalNeeded) {
 	memory.grow(totalNeeded - memory.buffer.byteLength);
     }
