@@ -82,7 +82,7 @@ JavaScript has a few failings in using AudioWorklets with WebAssembly successful
 
 1.  `XMLHttpRequest` is not usable in AudioWorklet context, so you must use
     the `postMessage` interface to send in the WASM binary blob.
-1.  TextDecoder, which I had been using to help with Zig print statments
+1.  TextDecoder, which I had been using to help with Zig print statements
     does not exist in the Worklet context.
 1.  The AudioWorklet `process` method's output buffers are of a fixed,
     unchangable size.
@@ -115,13 +115,13 @@ The outline of the algorithm used is as follows:
         
 Polyphony is the playback of the sum of multiple waveforms at once so that 
 multiple tones can be heard, and is the basis of turning a simple one
-not sound effect synth into something usable for making real music.
+note sound effect synth into something usable for making real music.
 Once this was achieved, the next steps would be to add effects like
 vibrato, tremolo, and pitch / volume sliding, and to create
 a music editor.
         
 For the creation of the synth itself I was fairly happy with the end result,
-but it was definitely labor intensive to make. There wasn't any great 
+but it was definitely labor intensive to make. There weren't any great 
 guides to using WebAssembly with AudioWorklets, and doing waveform
 mathematics is very prone to errors. To that end, I used Github user
 [rochar][rochar]'s [wavefile.js][wavefile-js] to download my 8 bit audio streams
