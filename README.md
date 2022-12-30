@@ -16,9 +16,9 @@ Could I have used wave files for sfx and xm for music? Definitely, but I didn't 
 ## Progress
 
 In its current state, it could be used to play short sound effects for
-online games. The code size is at last check ~15.9kb in js + wasm (without shortening variable names etc), or 7.4kb zipped. The audio it generates is 45kb/s 8bit audio.
+online games. The code size is at last check ~19.2kb in js + wasm (without shortening variable names etc), or 8.5kb zipped. The audio it generates is 45kb/s 8bit audio.
 
-The wasm binary itself is only 2kb.
+The wasm binary itself is only 3kb.
 
 - Play different notes from a note bank
 - Play different waveforms from a waveform bank
@@ -26,6 +26,7 @@ The wasm binary itself is only 2kb.
 - Message passing setup for the music player to allow for dynamic choice of song
 - Volume control via volume list
     - technically, because volume now allows you to play less than at maximum amplitude, you can now do polyphony by just playing multiple things at once with low volume.
+- can interrupt / resume at any point, meaning support for using a sfx as an instrument in a music track can be worked on now
 
 ### Soon
 
@@ -34,7 +35,7 @@ The wasm binary itself is only 2kb.
 ### Later
 
 - Waveform editing
-- Make music be able to use notes and sfx alike to play music
+- Make music be able to use notes and sfx alike to play music (sfx as instruments)
 - Make an optional file format for the music
 
 ## Licenses
