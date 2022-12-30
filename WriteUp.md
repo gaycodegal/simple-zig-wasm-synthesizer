@@ -24,7 +24,9 @@ without having to look up custom `zig` commands.
 
 Once I got started, the languages `for` loop ranges confused me, forcing while syntax seemed
 an unsafe choice compared to Rust. Once I started to need to specify step size,
-Zig's `for` loops just couldn't keep up. The `export` keyword was handy for exposing my code
+Zig's `for` loops just couldn't keep up. I did find Github user [ityonemo][ityonemo]'s
+[Zig in 30 Minutes Gist][zig-30-min] really useful for helping me to learn about things like this.
+The `export` keyword was handy for exposing my code
 to WebAssembly, but it meant I lost the safety of Zig's slice syntax. Luckily, Zig had
 good patterns to help solve some of the dangers of dealing with the C ABI you must use
 when exporting Zig functions to WebAssembly. C functions only allow taking raw pointers,
@@ -36,8 +38,9 @@ Slices, you need a way of coercing Optional typed things into non-null types. I'
 able to use const variable definitions whenever possible, and the `guard` pattern from Apple's Swift
 language, but the syntax for this in Zig took some figuring out. I tried using Zig's 
 `if(...) ... else ...` ternary syntax, but this wasn't satisfying the type checker.
-unlike rust, the typical if else can't be used to convert types either, so I tried
-searching for Zig's equivalent of a "null coalescing operator" or "elvis operator" (like Kotlin).
+unlike Rust, the typical if else can't be used to convert types either, so I tried
+searching for Zig's equivalent of a ["null coalescing operator"][null-coalescing-operator]
+or ["elvis operator"][elvis-operator] (like Kotlin).
 I was in luck with Zig's `orelse` operater, which works with Optional types and can
 properly unpack them. Thus, converting Optional C Pointers into a Zig Slice looks like
 this in my code:
@@ -168,13 +171,26 @@ a single file, or a JavaScript file + a WASM binary.
 
 ## Final Thoughts
 
-We're still missing a language that can compile itself to WebAssembly from
-within the browser itself. I think that would be cool.
+-   We're still missing a language that can compile itself to WebAssembly from
+    within the browser itself. I think that would be cool.
+-   Zig helped me not embed a compiler into my code and keep accidental
+    static cloning to a minimum.
+-   Zig was decent for keeping code size small. I am unsure if a second
+    optimizer pass from a 3rd party WASM tool would help.
+-   Zig did improve the quality of my code, and made my code clearer.
+-   JavaScript's lack of direct file access is annoying
+-   The lack of a common WebApp shipped in a single file users can
+    have forever is not ideal.
+
 
 [use-webassembly]:https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_AudioWorklet
 [goodbye-c++]:https://ziglang.org/news/goodbye-cpp/
 [ReleaseSmall]:https://ziglang.org/documentation/master/#ReleaseSmall
 [zig-wasm]:https://ziglang.org/documentation/master/#WebAssembly
+[ityonemo]:https://github.com/ityonemo
+[zig-30-min]:https://gist.github.com/ityonemo/769532c2017ed9143f3571e5ac104e50
 [unknown-pointer]:https://ziglang.org/documentation/master/#Pointers
+[null-coalescing-operator]:https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing
+[elvis-operator]:https://kotlinlang.org/docs/null-safety.html#elvis-operator
 [rochar]:https://github.com/rochars
 [wavefile-js]:https://github.com/rochars/wavefile/blob/master/bin/wavefile.js
