@@ -9,6 +9,8 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
     indexMainBuffer = 0;
     last_note_amplitude = 127;
     last_note_period = 0;
+    last_segment_partial = 0;
+    last_note_partial = 0;
     running = true;
     music = null;
     
@@ -62,9 +64,12 @@ class ZigSynthWorkletProcessor extends AudioWorkletProcessor {
 
     fillBuffer (buffer, sfx) {
 	const samplesRequired = buffer.length;
-	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, sfx.sampleRate, sfx.songNotes, sfx.noteLength, samplesRequired, sfx.waves, sfx.volumes, buffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period);
+	const result = createTempSfxBuffer(this.memory, this.sfxBuffer, sfx.sampleRate, sfx.songNotes, sfx.noteLength, samplesRequired, sfx.waves, sfx.volumes, buffer, this.songIndex, this.allocatedTo(), this.last_note_amplitude, this.last_note_period, this.last_note_partial, this.last_segment_partial);
+
 	this.last_note_amplitude = result.io_previous_note_amplitude[0];
 	this.last_note_period = result.io_note_period[0];
+	this.last_note_partial = result.io_note_partial[0];
+	this.last_segment_partial = result.io_segment_partial[0];
 
 	this.songIndex = (this.songIndex + samplesRequired / sfx.noteLength) % sfx.songNotes.length;
     }

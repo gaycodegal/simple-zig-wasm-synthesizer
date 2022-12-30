@@ -16,7 +16,7 @@ export async function main(){
        should be able to play multiple at once
     */
     function playSoundEffect(sampleRate, songNotes, noteLength, secondsLength, waves, volumes) {
-	growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes);
+	growMemoryIfNeededForSfxBuffer(memory, sampleRate * secondsLength, songNotes, noteLength, waves, volumes);
 	
 	if (sampleRate !== window.lastSampleRate) {
 	    window.lastSampleRate = sampleRate;
@@ -62,14 +62,28 @@ export async function main(){
 export async function _downloadWav(sampleRate, songNotes, noteLength, secondsLength, waves, volumes){
     const synthWASMModule = await synthWASMModulePromise;
     const {memory, sfxBuffer} = synthWASMModule;
-    growMemoryIfNeededForSfxBuffer(memory, sampleRate, songNotes, noteLength, secondsLength, waves, volumes);
+    const buffLen = 3200;
+    growMemoryIfNeededForSfxBuffer(memory, buffLen, songNotes, noteLength, waves, volumes);
     const hz = sampleRate;
-    let {sample_buffer, io_previous_note_amplitude, io_note_period, allocatorIndex} = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, sampleRate * secondsLength, waves, volumes);
-
+    const buffers = [];
+    let io_previous_note_amplitude, io_note_period, io_note_partial, io_segment_partial;
+    io_previous_note_amplitude = [127];
+    io_note_period = [0];
+    io_note_partial = [0];
+    io_segment_partial = [0];
+    for (var i = 0; i < sampleRate * secondsLength; i += buffLen) {
+	const songIndex = ((i / noteLength) | 0);
+	let r = createTempSfxBuffer(memory, sfxBuffer, sampleRate, songNotes, noteLength, buffLen, waves, volumes, null, songIndex, 1, io_previous_note_amplitude[0], io_note_period[0], io_note_partial[0], io_segment_partial[0]);
+	io_previous_note_amplitude = r.io_previous_note_amplitude;
+	io_note_period = r.io_note_period;
+	io_note_partial = r.io_note_partial;
+	io_segment_partial = r.io_segment_partial;
+	
+	buffers.push(Array.from(r.sample_buffer));
+    }
     const WaveFile = wavefile.WaveFile;
     const wav = new WaveFile();
-
-    wav.fromScratch(1, hz, '8', sample_buffer, {method: "point", LPF: false});
+    wav.fromScratch(1, hz, '8', buffers.flat(), {method: "point", LPF: false});
     download(wav.toDataURI(), "raw_wav_demo.wav");
 
     function download(d, name){
