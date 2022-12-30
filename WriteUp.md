@@ -173,7 +173,7 @@ a single file, or a JavaScript file + a WASM binary.
 
 -   We're still missing a language that can compile itself to WebAssembly from
     within the browser itself. I think that would be cool.
--   Zig helped me not embed a compiler into my code and keep accidental
+-   Zig helped me not embed an Allocator into my code and keep accidental
     static cloning to a minimum.
 -   Zig was decent for keeping code size small. I am unsure if a second
     optimizer pass from a 3rd party WASM tool would help.
