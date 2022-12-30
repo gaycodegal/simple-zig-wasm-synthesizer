@@ -5,6 +5,8 @@ to make bit tune sound effect / music for online games. This project is demonstr
 
 It is currently monophonic, but mostly usable.
 
+Read the [Write Up](./WriteUp.md) to learn how this was made.
+
 ## Rationale
 
 - Games can easily use megabytes for music even if the rest of the game is very small due to pixel art or being text based.
