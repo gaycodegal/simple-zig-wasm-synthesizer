@@ -24,13 +24,22 @@ const Note = struct {
     hz: u16,
     note: ?u8,
     volume: u8,
+    samples_per_wave: u32,
 };
 
 /// get the note to play at a position of the song, or "silence"
 /// fake note otherwise.
 ///
 /// a silent note has .note set to null
-fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8, volume_pos: usize, volumes: []u8) Note {
+fn getNote(
+    pos: usize,
+    song: []u8,
+    wave_pos: usize,
+    song_waves: []u8,
+    volume_pos: usize,
+    volumes: []u8,
+    sampleRate: u32,
+) Note {
     // if greater than song length, or bad note at index,
     // fake frequency is used, and note is set to null
     var hz: u16 = 256;
@@ -66,16 +75,17 @@ fn getNote(pos: usize, song: []u8, wave_pos: usize, song_waves: []u8, volume_pos
         .hz = hz,
         .note = note,
         .volume = volume,
+        .samples_per_wave = samplesPerWave(hz, sampleRate),
     };
 }
 
 /// get how many samples a note should play for
 /// given the sampleRate
-fn samplesPerWave(note: Note, sampleRate: u32) u32 {
-    if (note.hz == 0) {
+fn samplesPerWave(hz: u16, sampleRate: u32) u32 {
+    if (hz == 0) {
         return sampleRate / 256;
     } else {
-        return sampleRate / note.hz;
+        return sampleRate / hz;
     }
 }
 
@@ -153,10 +163,9 @@ export fn sfxBuffer(
     var song_index: usize = songIndex_start % chosenSong.len;
     var wave_index: usize = songIndex_start % noteWaveForms.len;
     var volume_index: usize = songIndex_start % note_volumes.len;
-    var note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
+    var note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes, sampleRate);
     // safety in case bad value
     note_period = note_period % @intCast(u8, note.waveform.len);
-    var samples_per_wave = samplesPerWave(note, sampleRate);
 
     // index into the output sample_array
     var sample_index: usize = 0;
@@ -203,7 +212,7 @@ export fn sfxBuffer(
             // and save information like note_period and
             // previous_note_amplitude, which are required to smoothly
             // transition into the next note.
-            const updates = @call(.always_inline, sfxBufferPlayNoteUntilIndex, .{ sample_index, sample_index_iter_end, sample_array, samples_per_wave, note, note_period, previous_note_amplitude, wave_segment_partial_completion });
+            const updates = @call(.always_inline, sfxBufferPlayNoteUntilIndex, .{ sample_index, sample_index_iter_end, sample_array, note, note_period, previous_note_amplitude, wave_segment_partial_completion });
             // required if interrupted mid-wave
             note_period = updates.note_period;
             // required if interrupted mid-wave
@@ -222,8 +231,7 @@ export fn sfxBuffer(
             wave_index = (wave_index + 1) % noteWaveForms.len;
             volume_index = (volume_index + 1) % note_volumes.len;
 
-            note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes);
-            samples_per_wave = samplesPerWave(note, sampleRate);
+            note = getNote(song_index, chosenSong, wave_index, noteWaveForms, volume_index, note_volumes, sampleRate);
 
             // completed note
             note_partial_completion = 0;
@@ -270,7 +278,6 @@ fn sfxBufferPlayNoteUntilIndex(
     sample_index_start: usize,
     sample_index_iter_end: usize,
     out_sampleArray: []u8,
-    samples_per_wave: u32,
     note: Note,
     note_period_start: u8,
     previous_note_amplitude_start: i32,
@@ -285,12 +292,12 @@ fn sfxBufferPlayNoteUntilIndex(
 
     // inputs to samplesPerNoteSlice need to be float, so avoid
     // casting every loop
-    const samples_per_wave_i32 = @intCast(i32, samples_per_wave);
-    const samples_per_wave_f32 = @intToFloat(f32, samples_per_wave);
+    const samples_per_wave_i32 = @intCast(i32, note.samples_per_wave);
+    const samples_per_wave_f32 = @intToFloat(f32, note.samples_per_wave);
     const wave_length_f32 = @intToFloat(f32, note.waveform.len);
     var note_period_f32 = @intToFloat(f32, note_period);
 
-    var samples_remaining_in_wave = @intCast(i32, samples_per_wave) - @call(.always_inline, targetSamplesPerWaveSlice, .{ samples_per_wave_f32, wave_length_f32, note_period_f32 });
+    var samples_remaining_in_wave = @intCast(i32, note.samples_per_wave) - @call(.always_inline, targetSamplesPerWaveSlice, .{ samples_per_wave_f32, wave_length_f32, note_period_f32 });
     var samples_left_to_do: i32 = samples_remaining_in_wave;
 
     // sometimes hz changes between notes, while
