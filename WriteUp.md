@@ -178,9 +178,13 @@ a single file, or a JavaScript file + a WASM binary.
 -   Zig was decent for keeping code size small. I am unsure if a second
     optimizer pass from a 3rd party WASM tool would help.
 -   Zig did improve the quality of my code, and made my code clearer.
--   JavaScript's lack of direct file access is annoying
+-   JavaScript's lack of direct file access is annoying.
+    Firefox doesn't support filesystem API, and there's
+    no real way to stream write a large file to disk.
 -   The lack of a common WebApp shipped in a single file users can
-    have forever is not ideal.
+    have forever is not ideal. [Web Bundles](https://web.dev/web-bundles/)
+    may eventually solve this but they are definitely not mature
+    enough to be useful for this yet. Zip still more usable.
 
 
 [use-webassembly]:https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Using_AudioWorklet
